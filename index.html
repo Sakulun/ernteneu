@@ -133,6 +133,87 @@ select option:disabled{color:var(--text3)}
   .leaflet-control-layers label { color:#e5e7eb !important; font-size:12px; }
   .leaflet-bar a { background:#161e16 !important; color:#e5e7eb !important; border-color:#374151 !important; }
   .leaflet-bar a:hover { background:#374151 !important; }
+
+/* ── ADMIN SIDEBAR LAYOUT ── */
+#admin-layout {
+  display: flex;
+  min-height: calc(100vh - 49px);
+  position: relative;
+}
+#admin-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 49px;
+  height: calc(100vh - 49px);
+  overflow-y: auto;
+  transition: width .2s, transform .2s;
+  z-index: 50;
+}
+#admin-sidebar.collapsed { width: 52px; }
+#admin-sidebar.collapsed .sidebar-label { display: none; }
+#admin-sidebar.collapsed .sidebar-section { display: none; }
+.sidebar-toggle {
+  background: none; border: none; color: var(--text3); cursor: pointer;
+  padding: 14px 16px; display: flex; align-items: center; gap: 10px;
+  font-family: var(--mono); font-size: 12px; width: 100%;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-toggle:hover { color: var(--gold2); }
+.sidebar-section {
+  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text3); padding: 14px 16px 6px;
+}
+.sidebar-btn {
+  background: none; border: none; color: var(--text2); cursor: pointer;
+  padding: 10px 16px; display: flex; align-items: center; gap: 10px;
+  font-family: var(--mono); font-size: 12px; width: 100%;
+  border-radius: 0; transition: all .15s; text-align: left;
+  border-left: 3px solid transparent;
+}
+.sidebar-btn:hover { background: var(--bg2); color: var(--text); }
+.sidebar-btn.active {
+  background: var(--bg2); color: var(--gold2);
+  border-left-color: var(--gold);
+}
+.sidebar-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+#admin-main {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+}
+#admin-main-inner {
+  padding: 16px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+/* Sidebar collapsed: show only icons */
+#admin-sidebar.collapsed .sidebar-btn { padding: 10px 14px; justify-content: center; border-left: none; border-bottom: 1px solid var(--border); }
+#admin-sidebar.collapsed .sidebar-btn.active { background: var(--bg3); }
+/* Mobile: sidebar hidden by default */
+@media (max-width: 640px) {
+  #admin-sidebar { position: fixed; top: 49px; left: 0; height: calc(100vh - 49px); transform: translateX(-100%); box-shadow: 4px 0 20px rgba(0,0,0,0.5); }
+  #admin-sidebar.mobile-open { transform: translateX(0); }
+  #admin-sidebar.collapsed { width: 220px; }
+  #admin-main { width: 100%; }
+  #sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 49; }
+  #sidebar-overlay.active { display: block; }
+}
+
+/* ── DRESCHER MAP SPLIT ── */
+#drescher-layout { display: flex; gap: 0; height: calc(100vh - 49px); }
+#drescher-panel { width: 340px; flex-shrink: 0; overflow-y: auto; padding: 16px; border-right: 1px solid var(--border); }
+#drescher-map-panel { flex: 1; position: relative; min-width: 0; }
+#drescher-map-container { width: 100%; height: 100%; }
+@media (max-width: 700px) {
+  #drescher-layout { flex-direction: column; height: auto; }
+  #drescher-panel { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+  #drescher-map-panel { height: 300px; }
+}
 </style>
 </head>
 <body>
@@ -600,6 +681,8 @@ function loginUser(user) {
   if(user.role !== "admin") shareUserGPS(user.id);
 }
 function logout() {
+  if(_drescherMap){_drescherMap.remove();_drescherMap=null;}
+  if(_mapInstance){_mapInstance.remove();_mapInstance=null;}
   state.currentUser = null;
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app').classList.remove('active');
@@ -613,18 +696,38 @@ function renderMain() {
 
 // ─── DRESCHER ───
 let dTab = 'zuweisung';
+let _drescherMap = null;
+let _drescherMapLayers = {};
+
 function renderDrescher() {
   const uid = state.currentUser.id;
   const mf = state.fuhren.filter(f=>f.drescherId===uid);
   const aktiveFelder = state.felder.filter(f=>f.status==='aktiv');
   const abfahrer = state.users.filter(u=>u.role==='abfahrer');
   const freieAbfahrer = abfahrer.filter(a=>abfahrerIstFrei(a.id));
-  document.getElementById('main-content').innerHTML = `
-    <div class="tabs">
-      <button class="tab ${dTab==='zuweisung'?'active':''}" onclick="dTab='zuweisung';renderDrescher()">Zuweisung</button>
-      <button class="tab ${dTab==='meine'?'active':''}" onclick="dTab='meine';renderDrescher()">Meine Fuhren (${mf.length})</button>
-    </div>
-    <div id="dtab"></div>`;
+
+  // Build split layout if not present
+  if(!document.getElementById('drescher-layout')) {
+    document.getElementById('main-content').innerHTML = `
+      <div id="drescher-layout">
+        <div id="drescher-panel">
+          <div class="tabs" style="margin-bottom:12px">
+            <button class="tab ${dTab==='zuweisung'?'active':''}" onclick="dTab='zuweisung';renderDrescher()">Zuweisung</button>
+            <button class="tab ${dTab==='meine'?'active':''}" onclick="dTab='meine';renderDrescher()">Fuhren (${mf.length})</button>
+          </div>
+          <div id="dtab"></div>
+        </div>
+        <div id="drescher-map-panel">
+          <div id="drescher-map-container"></div>
+        </div>
+      </div>`;
+    setTimeout(() => initDrescherMap(), 80);
+  } else {
+    // Update tab buttons
+    document.querySelectorAll('#drescher-panel .tab').forEach((btn,i) => {
+      btn.className = 'tab ' + (i===0 ? (dTab==='zuweisung'?'active':'') : (dTab==='meine'?'active':''));
+    });
+  }
 
   if(dTab==='zuweisung') {
     const noFelder = aktiveFelder.length===0;
@@ -826,28 +929,98 @@ let adminTab='schlaege';
 let schlagFilter='alle';
 let schlagSearch='';
 
+let sidebarCollapsed = false;
+
 function renderAdmin() {
-  document.getElementById('main-content').innerHTML=`
-    <div class="tabs">
-      <button class="tab ${adminTab==='schlaege'?'active':''}" onclick="adminTab='schlaege';renderAdmin()">Schläge</button>
-      <button class="tab ${adminTab==='dashboard'?'active':''}" onclick="adminTab='dashboard';renderAdmin()">Dashboard</button>
-      <button class="tab ${adminTab==='fortschritt'?'active':''}" onclick="adminTab='fortschritt';renderAdmin()">Fortschritt</button>
-      <button class="tab ${adminTab==='fuhren'?'active':''}" onclick="adminTab='fuhren';renderAdmin()">Fuhren</button>
-      <button class="tab ${adminTab==='nutzer'?'active':''}" onclick="adminTab='nutzer';renderAdmin()">Nutzer</button>
-      <button class="tab ${adminTab==='karte'?'active':''}" onclick="adminTab='karte';renderAdmin()">Karte</button>
-    </div>
-    <div id="admintab"></div>`;
+  // Destroy map if leaving karte tab
   if(adminTab !== 'karte' && _mapInstance) {
-    _mapInstance.remove();
-    _mapInstance = null;
-    _schlagLayers = {};
+    _mapInstance.remove(); _mapInstance = null; _schlagLayers = {};
   }
+
+  // Only rebuild shell if not already rendered
+  if(!document.getElementById('admin-layout')) {
+    document.getElementById('main-content').innerHTML = `
+      <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+      <div id="admin-layout">
+        <nav id="admin-sidebar" class="${sidebarCollapsed?'collapsed':''}">
+          <button class="sidebar-toggle" onclick="toggleSidebar()">
+            <span style="font-size:18px">${sidebarCollapsed?'☰':'✕'}</span>
+            <span class="sidebar-label" style="font-family:var(--serif);color:var(--gold2)">Ernte 2026</span>
+          </button>
+          <div class="sidebar-section">Übersicht</div>
+          <button class="sidebar-btn ${adminTab==='dashboard'?'active':''}" onclick="setAdminTab('dashboard')">
+            <span class="sidebar-icon">📊</span><span class="sidebar-label">Dashboard</span>
+          </button>
+          <button class="sidebar-btn ${adminTab==='fortschritt'?'active':''}" onclick="setAdminTab('fortschritt')">
+            <span class="sidebar-icon">📈</span><span class="sidebar-label">Fortschritt</span>
+          </button>
+          <button class="sidebar-btn ${adminTab==='karte'?'active':''}" onclick="setAdminTab('karte')">
+            <span class="sidebar-icon">🗺</span><span class="sidebar-label">Karte</span>
+          </button>
+          <div class="sidebar-section">Verwaltung</div>
+          <button class="sidebar-btn ${adminTab==='schlaege'?'active':''}" onclick="setAdminTab('schlaege')">
+            <span class="sidebar-icon">🌾</span><span class="sidebar-label">Schläge</span>
+          </button>
+          <button class="sidebar-btn ${adminTab==='fuhren'?'active':''}" onclick="setAdminTab('fuhren')">
+            <span class="sidebar-icon">🚛</span><span class="sidebar-label">Fuhren</span>
+          </button>
+          <button class="sidebar-btn ${adminTab==='nutzer'?'active':''}" onclick="setAdminTab('nutzer')">
+            <span class="sidebar-icon">👥</span><span class="sidebar-label">Nutzer</span>
+          </button>
+        </nav>
+        <div id="admin-main">
+          <div id="admin-main-inner">
+            <div id="admintab"></div>
+          </div>
+        </div>
+      </div>`;
+  } else {
+    // Just update active states in existing sidebar
+    document.querySelectorAll('.sidebar-btn').forEach(btn => {
+      const tab = btn.getAttribute('onclick').match(/'(\w+)'/)?.[1];
+      btn.classList.toggle('active', tab === adminTab);
+    });
+    // Karte braucht kein inner-padding
+    const inner = document.getElementById('admin-main-inner');
+    if(inner) inner.style.padding = adminTab==='karte' ? '0' : '16px';
+  }
+
   if(adminTab==='schlaege') renderAdminSchlaege();
   else if(adminTab==='dashboard') renderAdminDash();
   else if(adminTab==='fortschritt') renderAdminFortschritt();
   else if(adminTab==='nutzer') renderAdminNutzer();
   else if(adminTab==='karte') renderAdminKarte();
   else renderAdminFuhren();
+}
+
+function setAdminTab(tab) {
+  adminTab = tab;
+  // Close mobile sidebar
+  const sb = document.getElementById('admin-sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  if(sb && window.innerWidth <= 640) {
+    sb.classList.remove('mobile-open');
+    if(ov) ov.classList.remove('active');
+  }
+  renderAdmin();
+}
+
+function toggleSidebar() {
+  const sb = document.getElementById('admin-sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  if(!sb) return;
+  if(window.innerWidth <= 640) {
+    sb.classList.toggle('mobile-open');
+    if(ov) ov.classList.toggle('active');
+  } else {
+    sidebarCollapsed = !sidebarCollapsed;
+    sb.classList.toggle('collapsed', sidebarCollapsed);
+    // Update toggle icon
+    const icon = sb.querySelector('.sidebar-toggle span:first-child');
+    if(icon) icon.textContent = sidebarCollapsed ? '☰' : '✕';
+    // Resize map if open
+    if(adminTab === 'karte' && _mapInstance) setTimeout(()=>_mapInstance.invalidateSize(), 220);
+  }
 }
 
 function renderAdminSchlaege() {
@@ -1353,11 +1526,14 @@ let _userLocations = {}; // userId -> {lat,lon,ts}
 let _schlagLayers = {};  // feldId -> layer
 
 function renderAdminKarte() {
-  // Nur HTML aufbauen wenn Container noch nicht existiert
+  // Map fills the full admin-main area
+  const mainEl = document.getElementById('admin-main');
+  const sidebarW = (document.getElementById('admin-sidebar')?.offsetWidth || 220);
+  const mapH = `calc(100vh - 49px)`;
   if(!document.getElementById('map-container')) {
     document.getElementById('admintab').innerHTML = `
-      <div style="position:relative">
-        <div id="map-container" style="height:calc(100vh - 160px);min-height:400px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)"></div>
+      <div style="position:relative;height:${mapH};margin:-16px">
+        <div id="map-container" style="height:100%;width:100%;border-radius:0"></div>
         <div id="map-legend" style="position:absolute;bottom:20px;left:12px;z-index:1000;background:rgba(18,22,18,0.92);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--text2)">
           <div style="font-weight:600;margin-bottom:6px;color:var(--text)">Legende</div>
           <div style="display:flex;flex-direction:column;gap:4px">
@@ -1372,10 +1548,8 @@ function renderAdminKarte() {
       </div>`;
     setTimeout(() => initMap(), 50);
   } else if(_mapInstance) {
-    // Karte existiert bereits – nur Farben + Marker aktualisieren
-    refreshMapColors();
-    updateGPSMarkers(_mapInstance);
-    _mapInstance.invalidateSize();
+    // Map exists, just invalidate size (e.g. after sidebar resize)
+    setTimeout(() => _mapInstance.invalidateSize(), 50);
   }
 }
 function getFeldStatus(feldId) {
@@ -1542,6 +1716,64 @@ function refreshMapColors() {
   Object.entries(_schlagLayers).forEach(([feldId, layer]) => {
     const status = getFeldStatus(parseInt(feldId));
     layer.setStyle(schlagColor(status));
+  });
+}
+
+
+function initDrescherMap() {
+  if(_drescherMap) { _drescherMap.remove(); _drescherMap = null; }
+  _drescherMapLayers = {};
+  const container = document.getElementById('drescher-map-container');
+  if(!container) return;
+
+  const map = L.map('drescher-map-container', { center:[51.495,11.673], zoom:11 });
+  _drescherMap = map;
+
+  const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {attribution:'© Esri', maxZoom:19});
+  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OpenStreetMap', maxZoom:19});
+  sat.addTo(map);
+  L.control.layers({'Satellit':sat,'OSM':osm},{},{position:'topleft'}).addTo(map);
+
+  GEO_DATA.forEach(entry => {
+    const feld = state.felder.find(x=>x.id===entry.feldId);
+    if(!feld) return;
+    const status = feld.status;
+    const style = schlagColor(status);
+    const poly = L.polygon([entry.outer,...entry.holes], {...style, interactive:true});
+    const openFuhren = state.fuhren.filter(f=>f.feldId===entry.feldId&&f.status==='offen');
+    let popupHtml = `<div style="font-family:var(--mono);min-width:160px">
+      <div style="font-weight:600;font-size:13px">${feld.name}</div>
+      <div style="color:#9ca3af;font-size:11px;margin:2px 0 6px">${feld.fruchtart} · ${feld.flaeche?.toFixed(1)} ha</div>
+      <div style="font-size:11px;color:${status==='aktiv'?'#f59e0b':status==='abgeerntet'?'#22c55e':'#9ca3af'}">${status.charAt(0).toUpperCase()+status.slice(1)}</div>
+      ${openFuhren.length?`<div style="margin-top:6px;font-size:11px;color:#3b82f6">Abfahrer: ${openFuhren.map(f=>getUser(f.abfahrerId).name).join(', ')}</div>`:''}
+    </div>`;
+    poly.bindPopup(popupHtml, {className:'schlag-popup', maxWidth:200});
+    poly.on('mouseover', function(){ this.setStyle({fillOpacity:0.6,weight:3}); });
+    poly.on('mouseout', function(){ this.setStyle(style); });
+    poly.addTo(map);
+    _drescherMapLayers[entry.feldId] = poly;
+  });
+
+  // GPS tracking
+  shareUserGPS(state.currentUser.id);
+  // Load existing GPS
+  db.getGPS().then(gps => {
+    gps.forEach(g => { _userLocations[g.nutzer_id]={lat:parseFloat(g.lat),lon:parseFloat(g.lon),ts:new Date(g.aktualisiert_am).getTime()}; });
+    updateAllDriverMarkers(map, _drescherMapLayers);
+  });
+}
+
+function updateAllDriverMarkers(map, layers) {
+  state.users.filter(u=>u.role!=='admin').forEach(u => {
+    const loc = _userLocations[u.id];
+    if(!loc) return;
+    if(_gpsMarkers[u.id]) { _gpsMarkers[u.id].setLatLng([loc.lat,loc.lon]); }
+    else {
+      const m = L.marker([loc.lat,loc.lon],{icon:getDriverIcon(u.role),zIndexOffset:1000});
+      m.bindPopup(`<b>${u.name}</b><br>${u.label}`,{className:'driver-popup'});
+      m.addTo(map);
+      _gpsMarkers[u.id] = m;
+    }
   });
 }
 
