@@ -300,8 +300,18 @@ async function bootApp() {
     state.nextNr = nrs.length ? Math.max(...nrs)+1 : 1;
     showLoader('Echtzeit-Sync wird gestartet…');
     db.subscribeAll(async (payload) => {
-      // Reload affected table
       const tbl = payload.table;
+      // GPS: nur Marker aktualisieren, nie renderMain()
+      if(tbl === 'gps_positionen') {
+        const gps = await db.getGPS();
+        gps.forEach(g => {
+          _userLocations[g.nutzer_id] = {lat:parseFloat(g.lat), lon:parseFloat(g.lon), ts:new Date(g.aktualisiert_am).getTime()};
+        });
+        if(_mapInstance) updateGPSMarkers(_mapInstance);
+        return; // kein renderMain für GPS
+      }
+      // Fuhren/Felder: State aktualisieren, aber UI nur neu rendern
+      // wenn die Änderung von einem ANDEREN Gerät kommt (nicht von uns selbst)
       if(tbl === 'fuhren') {
         state.fuhren = await db.getFuhren();
         const nrs2 = state.fuhren.map(f=>parseInt((f.nr||'').replace('F-',''))).filter(n=>!isNaN(n));
@@ -309,19 +319,28 @@ async function bootApp() {
       } else if(tbl === 'felder') {
         state.felder = await db.getFelder();
         refreshMapColors();
-      } else if(tbl === 'gps_positionen') {
-        const gps = await db.getGPS();
-        gps.forEach(g => {
-          _userLocations[g.nutzer_id] = {lat:parseFloat(g.lat), lon:parseFloat(g.lon), ts:new Date(g.aktualisiert_am).getTime()};
-        });
-        if(_mapInstance) updateGPSMarkers(_mapInstance);
       }
-      if(state.currentUser) {
-        // Nicht neu rendern wenn Nutzer gerade ein Eingabefeld benutzt
-        const active = document.activeElement;
-        const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'TEXTAREA');
-        if(!isTyping) renderMain();
+      // Nur re-rendern wenn kein Eingabefeld aktiv und kein Dropdown offen
+      if(!state.currentUser) return;
+      const active = document.activeElement;
+      const isInteracting = active && (
+        active.tagName === 'INPUT' ||
+        active.tagName === 'SELECT' ||
+        active.tagName === 'TEXTAREA' ||
+        active.closest?.('.card') // innerhalb einer Eingabe-Card
+      );
+      if(isInteracting) return;
+      // Nur den aktuell sichtbaren Tab/Bereich aktualisieren, nicht alles
+      const role = state.currentUser.role;
+      if(role === 'admin') {
+        if(adminTab === 'dashboard') renderAdminDash();
+        else if(adminTab === 'fortschritt') renderAdminFortschritt();
+        else if(adminTab === 'fuhren') renderAdminFuhren();
+        // schlaege, nutzer, karte: kein Auto-Refresh nötig
       }
+      // Drescher/Abfahrer: nur Tab-Inhalt aktualisieren wenn auf dem "fertigen" Tab
+      else if(role === 'drescher' && dTab === 'meine') renderDrescher();
+      else if(role === 'abfahrer' && aTab === 'fertig') renderAbfahrer();
     });
     hideLoader();
     appReady = true;
