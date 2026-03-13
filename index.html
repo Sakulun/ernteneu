@@ -316,7 +316,12 @@ async function bootApp() {
         });
         if(_mapInstance) updateGPSMarkers(_mapInstance);
       }
-      if(state.currentUser) renderMain();
+      if(state.currentUser) {
+        // Nicht neu rendern wenn Nutzer gerade ein Eingabefeld benutzt
+        const active = document.activeElement;
+        const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'TEXTAREA');
+        if(!isTyping) renderMain();
+      }
     });
     hideLoader();
     appReady = true;
@@ -813,6 +818,11 @@ function renderAdmin() {
       <button class="tab ${adminTab==='karte'?'active':''}" onclick="adminTab='karte';renderAdmin()">Karte</button>
     </div>
     <div id="admintab"></div>`;
+  if(adminTab !== 'karte' && _mapInstance) {
+    _mapInstance.remove();
+    _mapInstance = null;
+    _schlagLayers = {};
+  }
   if(adminTab==='schlaege') renderAdminSchlaege();
   else if(adminTab==='dashboard') renderAdminDash();
   else if(adminTab==='fortschritt') renderAdminFortschritt();
@@ -1324,25 +1334,31 @@ let _userLocations = {}; // userId -> {lat,lon,ts}
 let _schlagLayers = {};  // feldId -> layer
 
 function renderAdminKarte() {
-  document.getElementById('admintab').innerHTML = `
-    <div style="position:relative">
-      <div id="map-container" style="height:calc(100vh - 160px);min-height:400px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)"></div>
-      <div id="map-legend" style="position:absolute;bottom:20px;left:12px;z-index:1000;background:rgba(18,22,18,0.92);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--text2)">
-        <div style="font-weight:600;margin-bottom:6px;color:var(--text)">Legende</div>
-        <div style="display:flex;flex-direction:column;gap:4px">
-          <div><span style="display:inline-block;width:12px;height:12px;background:#f59e0b;opacity:0.7;border-radius:2px;margin-right:5px"></span>Aktiv (in Ernte)</div>
-          <div><span style="display:inline-block;width:12px;height:12px;background:#22c55e;opacity:0.7;border-radius:2px;margin-right:5px"></span>Abgeerntet</div>
-          <div><span style="display:inline-block;width:12px;height:12px;background:#64748b;opacity:0.9;border-radius:2px;margin-right:5px"></span>Inaktiv</div>
-          <div style="margin-top:4px"><span style="display:inline-block;width:12px;height:12px;background:#f59e0b;border-radius:50%;margin-right:5px"></span>Drescher</div>
-          <div><span style="display:inline-block;width:12px;height:12px;background:#3b82f6;border-radius:50%;margin-right:5px"></span>Abfahrer</div>
+  // Nur HTML aufbauen wenn Container noch nicht existiert
+  if(!document.getElementById('map-container')) {
+    document.getElementById('admintab').innerHTML = `
+      <div style="position:relative">
+        <div id="map-container" style="height:calc(100vh - 160px);min-height:400px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)"></div>
+        <div id="map-legend" style="position:absolute;bottom:20px;left:12px;z-index:1000;background:rgba(18,22,18,0.92);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--text2)">
+          <div style="font-weight:600;margin-bottom:6px;color:var(--text)">Legende</div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <div><span style="display:inline-block;width:12px;height:12px;background:#f59e0b;opacity:0.7;border-radius:2px;margin-right:5px"></span>Aktiv (in Ernte)</div>
+            <div><span style="display:inline-block;width:12px;height:12px;background:#22c55e;opacity:0.7;border-radius:2px;margin-right:5px"></span>Abgeerntet</div>
+            <div><span style="display:inline-block;width:12px;height:12px;background:#64748b;opacity:0.9;border-radius:2px;margin-right:5px"></span>Inaktiv</div>
+            <div style="margin-top:4px"><span style="display:inline-block;width:12px;height:12px;background:#f59e0b;border-radius:50%;margin-right:5px"></span>Drescher</div>
+            <div><span style="display:inline-block;width:12px;height:12px;background:#3b82f6;border-radius:50%;margin-right:5px"></span>Abfahrer</div>
+          </div>
         </div>
-      </div>
-      <div id="map-gps-status" style="position:absolute;top:12px;right:12px;z-index:1000;background:rgba(18,22,18,0.92);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--text3)">GPS bereit</div>
-    </div>`;
-  
-  setTimeout(() => initMap(), 50);
+        <div id="map-gps-status" style="position:absolute;top:12px;right:12px;z-index:1000;background:rgba(18,22,18,0.92);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--text3)">GPS bereit</div>
+      </div>`;
+    setTimeout(() => initMap(), 50);
+  } else if(_mapInstance) {
+    // Karte existiert bereits – nur Farben + Marker aktualisieren
+    refreshMapColors();
+    updateGPSMarkers(_mapInstance);
+    _mapInstance.invalidateSize();
+  }
 }
-
 function getFeldStatus(feldId) {
   const f = state.felder.find(x => x.id === feldId);
   return f ? f.status : 'inaktiv';
