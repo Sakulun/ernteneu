@@ -214,6 +214,50 @@ select option:disabled{color:var(--text3)}
   #drescher-panel { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
   #drescher-map-panel { height: 300px; }
 }
+
+/* ── STATUS BADGES ── */
+.badge-verifiziert{background:#1a2a3a;color:#5bafd4;border:1px solid #2a4a6a}
+.badge-pending{background:#2a2a10;color:#c8a84b;border:1px solid #4a4a20}
+
+/* ── SILO MANAGEMENT ── */
+.silo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 8px; margin-bottom: 16px; }
+.silo-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px 12px; cursor: default; transition: border-color .15s; position: relative;
+}
+.silo-card.drag-over { border-color: var(--gold); background: var(--bg3); }
+.silo-card.overfull { border-color: var(--red); }
+.silo-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.silo-kultur { font-size: 10px; color: var(--text3); margin-bottom: 6px; letter-spacing: .5px; }
+.silo-bar-wrap { background: var(--bg3); border-radius: 3px; height: 6px; overflow: hidden; margin-bottom: 5px; }
+.silo-bar { height: 100%; border-radius: 3px; transition: width .3s; }
+.silo-stats { font-size: 10px; color: var(--text3); display: flex; justify-content: space-between; }
+.fuhre-drag-item {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 7px;
+  padding: 8px 12px; margin-bottom: 6px; cursor: grab; transition: all .15s;
+  display: flex; align-items: center; gap: 8px;
+}
+.fuhre-drag-item:active { cursor: grabbing; opacity: .7; }
+.fuhre-drag-item.dragging { opacity: .4; border-style: dashed; }
+.fuhre-drag-item.assigned { opacity: .5; border-color: var(--green); }
+.drop-zone-hint { text-align: center; color: var(--text3); font-size: 11px; padding: 12px; border: 1px dashed var(--border); border-radius: 6px; margin-top: 8px; }
+
+/* ── MOBILE SIDEBAR FIX ── */
+#topbar-menu-btn {
+  display: none; background: none; border: 1px solid var(--border);
+  color: var(--text3); padding: 5px 9px; border-radius: 6px; cursor: pointer;
+  font-size: 16px; font-family: var(--mono); line-height: 1;
+}
+@media (max-width: 640px) {
+  #topbar-menu-btn { display: block; }
+  .content { padding: 12px 10px; }
+  #admin-main-inner { padding: 12px 10px; }
+}
+
+/* ── FUHRE VERIFY FORM ── */
+.verify-form { border: 1px solid var(--blue); border-radius: var(--radius); padding: 14px; margin-top: 8px; background: var(--bg3); }
+.verify-form .form-group { margin-bottom: 10px; }
+.verify-form label { font-size: 11px; color: var(--text3); }
 </style>
 </head>
 <body>
@@ -247,7 +291,7 @@ select option:disabled{color:var(--text3)}
       <span class="topbar-logo">Ernte 2026</span>
       <span class="topbar-user"><span class="dot" id="topbar-dot"></span><span id="topbar-name"></span><span id="topbar-sync" style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:none;margin-left:8px;flex-shrink:0;vertical-align:middle"></span></span>
     </div>
-    <button class="logout-btn" onclick="logout()">Abmelden</button>
+    <div style="display:flex;gap:8px;align-items:center"><button id="topbar-menu-btn" onclick="toggleSidebar()">☰</button><button class="logout-btn" onclick="logout()">Abmelden</button></div>
   </div>
   <div class="content" id="main-content"></div>
 </div>
@@ -264,7 +308,7 @@ const db = {
     const { data, error } = await sb.from('nutzer').select('*').order('id');
     if(error) throw error;
     return data.map(u => {
-      const lbl = u.rolle==='drescher'?'Drescherfahrer':u.rolle==='abfahrer'?'Abfahrer / Waage':'Admin / Übersicht';
+      const lbl = u.rolle==='drescher'?'Drescherfahrer':u.rolle==='abfahrer'?'Abfahrer / Waage':u.rolle==='silomeister'?'Silomeister':'Admin / Übersicht';
       return { id: u.id, name: u.name, role: u.rolle, label: lbl, pw: u.pw };
     });
   },
@@ -307,7 +351,16 @@ const db = {
       fallzahl: f.fallzahl ? parseFloat(f.fallzahl) : null,
       protein: f.protein ? parseFloat(f.protein) : null,
       hlGewicht: f.hl_gewicht ? parseFloat(f.hl_gewicht) : null,
-      zeit: f.zeit
+      zeit: f.zeit,
+      verifiziert: f.verifiziert || false,
+      verifiziertVon: f.verifiziert_von || null,
+      siloId: f.silo_id || null,
+      // korrigierte Felder (admin edits)
+      feldIdKorr: f.feld_id_korr || null,
+      drescherId: f.drescher_id_korr || f.drescher_id,
+      abfahrerId: f.abfahrer_id_korr || f.abfahrer_id,
+      feldId: f.feld_id_korr || f.feld_id,
+      fruchtart: f.fruchtart_korr || f.fruchtart,
     }));
   },
   async insertFuhre(f) {
@@ -329,7 +382,23 @@ const db = {
     if(updates.fallzahl !== undefined) map.fallzahl = updates.fallzahl;
     if(updates.protein !== undefined) map.protein = updates.protein;
     if(updates.hlGewicht !== undefined) map.hl_gewicht = updates.hlGewicht;
+    if(updates.verifiziert !== undefined) map.verifiziert = updates.verifiziert;
+    if(updates.verifiziertVon !== undefined) map.verifiziert_von = updates.verifiziertVon;
+    if(updates.siloId !== undefined) map.silo_id = updates.siloId;
+    if(updates.feldIdKorr !== undefined) { map.feld_id_korr = updates.feldIdKorr; map.feld_id = updates.feldIdKorr; }
+    if(updates.drescherId !== undefined) map.drescher_id_korr = updates.drescherId;
+    if(updates.abfahrerId !== undefined) map.abfahrer_id_korr = updates.abfahrerId;
+    if(updates.fruchtartKorr !== undefined) { map.fruchtart_korr = updates.fruchtartKorr; map.fruchtart = updates.fruchtartKorr; }
     const { error } = await sb.from('fuhren').update(map).eq('id', id);
+    if(error) throw error;
+  },
+  async getSilos() {
+    const { data, error } = await sb.from('silos').select('*').order('id');
+    if(error) throw error;
+    return data || [];
+  },
+  async updateSilo(id, updates) {
+    const { error } = await sb.from('silos').update(updates).eq('id', id);
     if(error) throw error;
   },
 
@@ -351,6 +420,7 @@ const db = {
       .on('postgres_changes', {event:'*', schema:'public', table:'fuhren'}, onChange)
       .on('postgres_changes', {event:'*', schema:'public', table:'felder'}, onChange)
       .on('postgres_changes', {event:'*', schema:'public', table:'gps_positionen'}, onChange)
+      .on('postgres_changes', {event:'*', schema:'public', table:'silos'}, onChange)
       .subscribe();
   }
 };
@@ -370,12 +440,13 @@ function hideLoader() {
 async function bootApp() {
   showLoader('Verbinde mit Datenbank…');
   try {
-    const [nutzer, felder, fuhren] = await Promise.all([
-      db.getNutzer(), db.getFelder(), db.getFuhren()
+    const [nutzer, felder, fuhren, silos] = await Promise.all([
+      db.getNutzer(), db.getFelder(), db.getFuhren(), db.getSilos()
     ]);
     state.users = nutzer;
     state.felder = felder;
     state.fuhren = fuhren;
+    state.silos = silos;
     // nextNr from max fuhre nr
     const nrs = fuhren.map(f=>parseInt((f.nr||'').replace('F-',''))).filter(n=>!isNaN(n));
     state.nextNr = nrs.length ? Math.max(...nrs)+1 : 1;
@@ -393,6 +464,7 @@ async function bootApp() {
       }
       // Fuhren/Felder: State aktualisieren, aber UI nur neu rendern
       // wenn die Änderung von einem ANDEREN Gerät kommt (nicht von uns selbst)
+      if(tbl === 'silos') { state.silos = await db.getSilos(); return; }
       if(tbl === 'fuhren') {
         state.fuhren = await db.getFuhren();
         const nrs2 = state.fuhren.map(f=>parseInt((f.nr||'').replace('F-',''))).filter(n=>!isNaN(n));
@@ -616,6 +688,7 @@ const state = {
     { id: 12, name: "Zuckerrüben" }
   ],
   fuhren: [],
+  silos: [],
   nextId: 1, nextNr: 1, lastFeldId: null,
 };
 
@@ -691,6 +764,7 @@ function renderMain() {
   const r = state.currentUser.role;
   if(r==='drescher') renderDrescher();
   else if(r==='abfahrer') renderAbfahrer();
+  else if(r==='silomeister') renderSilomeister();
   else renderAdmin();
 }
 
@@ -967,6 +1041,10 @@ function renderAdmin() {
           <button class="sidebar-btn ${adminTab==='nutzer'?'active':''}" onclick="setAdminTab('nutzer')">
             <span class="sidebar-icon">👥</span><span class="sidebar-label">Nutzer</span>
           </button>
+          <div class="sidebar-section">Lager</div>
+          <button class="sidebar-btn ${adminTab==='silos'?'active':''}" onclick="setAdminTab('silos')">
+            <span class="sidebar-icon">🏭</span><span class="sidebar-label">Silomanagement</span>
+          </button>
         </nav>
         <div id="admin-main">
           <div id="admin-main-inner">
@@ -990,6 +1068,7 @@ function renderAdmin() {
   else if(adminTab==='fortschritt') renderAdminFortschritt();
   else if(adminTab==='nutzer') renderAdminNutzer();
   else if(adminTab==='karte') renderAdminKarte();
+  else if(adminTab==='silos') renderSiloManagement();
   else renderAdminFuhren();
 }
 
@@ -1193,28 +1272,146 @@ function renderAdminDash() {
 }
 
 function renderAdminFuhren() {
-  const alle=[...state.fuhren].sort((a,b)=>new Date(b.zeit)-new Date(a.zeit));
-  document.getElementById('admintab').innerHTML=`
-    <div class="export-bar">
-      <span>${alle.length} Fuhren · ${alle.filter(f=>f.status==='fertig').length} abgeschlossen</span>
-      <button class="btn btn-sm btn-outline" onclick="exportCSV()">&#8595; CSV</button>
+  const fertig = state.fuhren.filter(f=>f.status==='fertig').sort((a,b)=>new Date(b.zeit)-new Date(a.zeit));
+  const offen = state.fuhren.filter(f=>f.status==='offen');
+  const pending = fertig.filter(f=>!f.verifiziert);
+  const verified = fertig.filter(f=>f.verifiziert);
+
+  const fuhreRow = (f, showEdit=true) => {
+    const feld = getFeld(f.feldId);
+    const n = netto(f);
+    const isVerified = f.verifiziert;
+    return `<div class="card" style="margin-bottom:10px;border-color:${isVerified?'var(--green)':'var(--border)'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--text)">${f.nr} · ${fmtDate(f.zeit)} ${fmtTime(f.zeit)}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${feld.name||'?'} · ${f.fruchtart}</div>
+          <div style="font-size:11px;color:var(--text3)">${getUser(f.drescherId).name} → ${getUser(f.abfahrerId).name}</div>
+        </div>
+        <div style="flex-shrink:0;text-align:right">
+          <div style="font-family:var(--serif);font-size:16px;font-weight:600;color:var(--gold2)">${n?kg2t(n):'–'}</div>
+          <div style="font-size:10px;color:var(--text3)">netto</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px">
+        <div style="font-size:10px"><span style="color:var(--text3)">Feuchte </span><span>${f.feuchte??'–'}%</span></div>
+        <div style="font-size:10px"><span style="color:var(--text3)">Protein </span><span>${f.protein??'–'}%</span></div>
+        <div style="font-size:10px"><span style="color:var(--text3)">Fallzahl </span><span>${f.fallzahl??'–'}</span></div>
+        <div style="font-size:10px"><span style="color:var(--text3)">HL </span><span>${f.hlGewicht??'–'}</span></div>
+      </div>
+      ${f.siloId?`<div style="margin-top:6px;font-size:11px;color:var(--blue)">🏭 Silo ${f.siloId}</div>`:''}
+      ${showEdit ? `<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+        ${!isVerified ? `
+          <button class="btn btn-sm btn-outline" onclick="toggleFuhreEdit(${f.id})">✏ Bearbeiten</button>
+          <button class="btn btn-sm" style="background:var(--green);color:#0a1f0a;border:none" onclick="verifiziereFuhre(${f.id})">✓ Bestätigen</button>
+        ` : `
+          <button class="btn btn-sm btn-outline" onclick="toggleFuhreEdit(${f.id})">✏ Bearbeiten</button>
+          <button class="btn btn-sm btn-amber" onclick="verifiziereFuhre(${f.id})">↺ Öffnen</button>
+        `}
+      </div>` : ''}
+      <div id="edit-form-${f.id}" style="display:none"></div>
+    </div>`;
+  };
+
+  document.getElementById('admintab').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+      <div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--amber)">${offen.length}</div><div class="stat-label">offen</div></div>
+      <div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--gold2)">${pending.length}</div><div class="stat-label">zu prüfen</div></div>
+      <div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--green)">${verified.length}</div><div class="stat-label">bestätigt</div></div>
     </div>
-    ${alle.length?alle.map(f=>{const n=netto(f);return `<div class="fuhre-item">
-      <div class="fuhre-top"><span class="fuhre-nr">${f.nr} · ${fmtDate(f.zeit)} ${fmtTime(f.zeit)}</span><span class="badge badge-${f.status}">${f.status.toUpperCase()}</span></div>
-      <div class="fuhre-info">
-        <div class="fuhre-kv"><span class="fk">Schlag </span><span class="fv">${getFeld(f.feldId).name||'–'}</span></div>
-        <div class="fuhre-kv"><span class="fk">Fruchtart </span><span class="fv">${f.fruchtart||'–'}</span></div>
-        <div class="fuhre-kv"><span class="fk">Drescher </span><span class="fv">${getUser(f.drescherId).name||'–'}</span></div>
-        <div class="fuhre-kv"><span class="fk">Abfahrer </span><span class="fv">${getUser(f.abfahrerId).name||'–'}</span></div>
-        <div class="fuhre-kv"><span class="fk">Netto </span><span class="fv">${n?kg2t(n):'–'}</span></div>
-        <div class="fuhre-kv"><span class="fk">Feuchte </span><span class="fv">${f.feuchte?f.feuchte+'%':'–'}</span></div>
-        ${f.protein?`<div class="fuhre-kv"><span class="fk">Protein </span><span class="fv">${f.protein}%</span></div>`:''}
-        ${f.fallzahl?`<div class="fuhre-kv"><span class="fk">Fallzahl </span><span class="fv">${f.fallzahl}</span></div>`:''}
-      </div></div>`;}).join(''):'<div class="empty-state">Noch keine Fuhren.</div>'}`;
+    ${pending.length ? `<div class="section-label" style="color:var(--gold2)">⚠ Zu bestätigen (${pending.length})</div>${pending.map(f=>fuhreRow(f,true)).join('')}` : ''}
+    ${verified.length ? `<div class="section-label" style="margin-top:8px">✓ Bestätigt (${verified.length})</div>${verified.map(f=>fuhreRow(f,true)).join('')}` : ''}
+    ${offen.length ? `<div class="section-label" style="margin-top:8px;color:var(--amber)">Offene Fuhren (${offen.length})</div>${offen.map(f=>fuhreRow(f,false)).join('')}` : ''}
+    <div style="margin-top:16px">
+      <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ CSV Export</button>
+    </div>`;
 }
 
+let _editOpenId = null;
+function toggleFuhreEdit(fId) {
+  const el = document.getElementById('edit-form-'+fId);
+  if(!el) return;
+  if(_editOpenId && _editOpenId !== fId) {
+    const prev = document.getElementById('edit-form-'+_editOpenId);
+    if(prev) prev.style.display = 'none';
+  }
+  if(el.style.display === 'none' || !el.style.display) {
+    _editOpenId = fId;
+    el.style.display = 'block';
+    renderFuhreEditForm(fId, el);
+  } else {
+    el.style.display = 'none';
+    _editOpenId = null;
+  }
+}
 
-let fortschrittExpanded = {};
+function renderFuhreEditForm(fId, container) {
+  const f = state.fuhren.find(x=>x.id===fId);
+  if(!f) return;
+  const felder = state.felder;
+  const feldOptions = felder.map(x=>`<option value="${x.id}" ${x.id===f.feldId?'selected':''}>${x.name}</option>`).join('');
+  const dreschers = state.users.filter(u=>u.role==='drescher').map(u=>`<option value="${u.id}" ${u.id===f.drescherId?'selected':''}>${u.name}</option>`).join('');
+  const abfahrers = state.users.filter(u=>u.role==='abfahrer').map(u=>`<option value="${u.id}" ${u.id===f.abfahrerId?'selected':''}>${u.name}</option>`).join('');
+  const fruchtarten = [...new Set(state.felder.map(x=>x.fruchtart))].map(fa=>`<option value="${fa}" ${fa===f.fruchtart?'selected':''}>${fa}</option>`).join('');
+
+  container.innerHTML = `<div class="verify-form">
+    <div style="font-size:11px;font-weight:600;color:var(--blue);margin-bottom:10px">✏ Fuhre bearbeiten</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="form-group"><label>Schlag</label><select id="ef-feld-${fId}">${feldOptions}</select></div>
+      <div class="form-group"><label>Fruchtart</label><select id="ef-fa-${fId}">${fruchtarten}</select></div>
+      <div class="form-group"><label>Drescher</label><select id="ef-dr-${fId}">${dreschers}</select></div>
+      <div class="form-group"><label>Abfahrer</label><select id="ef-ab-${fId}">${abfahrers}</select></div>
+      <div class="form-group"><label>Vollgew. (kg)</label><input type="number" id="ef-voll-${fId}" value="${f.vollgewicht??''}"></div>
+      <div class="form-group"><label>Leergew. (kg)</label><input type="number" id="ef-leer-${fId}" value="${f.leergewicht??''}"></div>
+      <div class="form-group"><label>Feuchte (%)</label><input type="number" step="0.1" id="ef-feuchte-${fId}" value="${f.feuchte??''}"></div>
+      <div class="form-group"><label>Fallzahl</label><input type="number" id="ef-fz-${fId}" value="${f.fallzahl??''}"></div>
+      <div class="form-group"><label>Protein (%)</label><input type="number" step="0.1" id="ef-prot-${fId}" value="${f.protein??''}"></div>
+      <div class="form-group"><label>HL-Gewicht</label><input type="number" step="0.1" id="ef-hl-${fId}" value="${f.hlGewicht??''}"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-primary btn-sm" onclick="saveFuhreEdit(${fId})">💾 Speichern</button>
+      <button class="btn btn-outline btn-sm" onclick="toggleFuhreEdit(${fId})">Abbrechen</button>
+    </div>
+  </div>`;
+}
+
+async function saveFuhreEdit(fId) {
+  const f = state.fuhren.find(x=>x.id===fId);
+  if(!f) return;
+  const updates = {
+    feldIdKorr: parseInt(document.getElementById('ef-feld-'+fId).value),
+    fruchtartKorr: document.getElementById('ef-fa-'+fId).value,
+    drescherId: parseInt(document.getElementById('ef-dr-'+fId).value),
+    abfahrerId: parseInt(document.getElementById('ef-ab-'+fId).value),
+    vollgewicht: parseFloat(document.getElementById('ef-voll-'+fId).value)||null,
+    leergewicht: parseFloat(document.getElementById('ef-leer-'+fId).value)||null,
+    feuchte: parseFloat(document.getElementById('ef-feuchte-'+fId).value)||null,
+    fallzahl: parseFloat(document.getElementById('ef-fz-'+fId).value)||null,
+    protein: parseFloat(document.getElementById('ef-prot-'+fId).value)||null,
+    hlGewicht: parseFloat(document.getElementById('ef-hl-'+fId).value)||null,
+  };
+  const feld = getFeld(updates.feldIdKorr);
+  Object.assign(f, updates, {fruchtart: updates.fruchtartKorr, feldId: updates.feldIdKorr});
+  renderAdminFuhren();
+  try {
+    await db.updateFuhre(fId, updates);
+    showToast('✓ Fuhre aktualisiert');
+  } catch(e) { showToast('⚠ '+e.message, 'error'); }
+}
+
+async function verifiziereFuhre(fId) {
+  const f = state.fuhren.find(x=>x.id===fId);
+  if(!f) return;
+  const newVal = !f.verifiziert;
+  f.verifiziert = newVal;
+  f.verifiziertVon = newVal ? state.currentUser.id : null;
+  renderAdminFuhren();
+  try {
+    await db.updateFuhre(fId, {verifiziert: newVal, verifiziertVon: newVal ? state.currentUser.id : null});
+    showToast(newVal ? '✓ Fuhre bestätigt' : 'Fuhre zurückgesetzt');
+  } catch(e) { showToast('⚠ '+e.message, 'error'); }
+}
+
 
 function renderAdminFortschritt() {
   // Build kulturen map with per-schlag ertrag
@@ -1381,7 +1578,7 @@ function showToast(msg, type='success') {
 }
 
 function roleLabel(r) {
-  return r==='drescher'?'Drescherfahrer':r==='abfahrer'?'Abfahrer / Waage':'Admin / Übersicht';
+  return r==='drescher'?'Drescherfahrer':r==='abfahrer'?'Abfahrer / Waage':r==='silomeister'?'Silomeister':'Admin / Übersicht';
 }
 
 let nutzerEditId = null;
@@ -1775,6 +1972,172 @@ function updateAllDriverMarkers(map, layers) {
       _gpsMarkers[u.id] = m;
     }
   });
+}
+
+
+// ─── SILO MANAGEMENT ───
+let _dragFuhreId = null;
+
+function getSiloFill(siloId) {
+  // sum netto kg of fuhren assigned to this silo
+  return state.fuhren
+    .filter(f => f.siloId === siloId && f.status === 'fertig')
+    .reduce((s,f) => s+(netto(f)||0), 0);
+}
+
+function renderSiloManagement() {
+  const bigSilos = state.silos.filter(s=>s.kapazitaet_t>=1000).sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true}));
+  const smallSilos = state.silos.filter(s=>s.kapazitaet_t<1000).sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true}));
+
+  // Unassigned fertige fuhren
+  const unassigned = state.fuhren.filter(f=>f.status==='fertig'&&!f.siloId).sort((a,b)=>new Date(b.zeit)-new Date(a.zeit));
+  const assigned = state.fuhren.filter(f=>f.status==='fertig'&&f.siloId).sort((a,b)=>new Date(b.zeit)-new Date(a.zeit));
+
+  const siloCard = (s) => {
+    const fillKg = getSiloFill(s.id);
+    const fillT = fillKg/1000;
+    const pct = Math.min(100, (fillT/s.kapazitaet_t)*100);
+    const overfull = fillT > s.kapazitaet_t;
+    const barColor = overfull ? 'var(--red)' : pct>85 ? 'var(--amber)' : 'var(--green)';
+    const assignedFuhren = state.fuhren.filter(f=>f.siloId===s.id&&f.status==='fertig');
+    const siloFuhrenHtml = assignedFuhren.map(f=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:10px">
+        <span style="color:var(--text2)">${f.nr} · ${f.fruchtart}</span>
+        <span style="color:var(--text3)">${netto(f)?(netto(f)/1000).toFixed(2)+' t':'–'}</span>
+        <button onclick="removeFuhreFromSilo(${f.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:0 2px">✕</button>
+      </div>`).join('');
+
+    return `<div class="silo-card ${overfull?'overfull':''}"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="dropFuhreOnSilo(event,'${s.id}');this.classList.remove('drag-over')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="silo-name">${s.id}</div>
+          <div class="silo-kultur">${s.fruchtart||'— keine Kultur —'}</div>
+        </div>
+        <button onclick="editSiloKultur('${s.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:2px" title="Kultur festlegen">✏</button>
+      </div>
+      <div class="silo-bar-wrap"><div class="silo-bar" style="width:${pct.toFixed(1)}%;background:${barColor}"></div></div>
+      <div class="silo-stats">
+        <span style="color:${overfull?'var(--red)':'inherit'}">${fillT.toFixed(1)}t</span>
+        <span>${pct.toFixed(0)}%</span>
+        <span>${s.kapazitaet_t}t</span>
+      </div>
+      ${assignedFuhren.length ? `
+        <details style="margin-top:8px">
+          <summary style="font-size:10px;color:var(--text3);cursor:pointer">${assignedFuhren.length} Fuhren</summary>
+          <div style="margin-top:4px">${siloFuhrenHtml}</div>
+        </details>` : ''}
+    </div>`;
+  };
+
+  const fuhreItem = (f) => {
+    const n = netto(f);
+    const assigned = !!f.siloId;
+    return `<div class="fuhre-drag-item ${assigned?'assigned':''}"
+      draggable="true"
+      ondragstart="_dragFuhreId=${f.id};this.classList.add('dragging')"
+      ondragend="this.classList.remove('dragging')"
+      id="drag-fuhre-${f.id}">
+      <span style="font-size:13px">${f.verifiziert?'✓':'⏳'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:500">${f.nr}</div>
+        <div style="font-size:10px;color:var(--text3)">${f.fruchtart} · ${n?(n/1000).toFixed(2)+' t':'?'}</div>
+      </div>
+      ${assigned ? `<span style="font-size:10px;color:var(--blue);flex-shrink:0">${f.siloId}</span>` : ''}
+    </div>`;
+  };
+
+  const el = document.getElementById('admintab') || document.getElementById('silo-main');
+  if(!el) return;
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:280px 1fr;gap:16px;min-height:60vh">
+      <!-- LEFT: Fuhren-Liste -->
+      <div>
+        <div class="section-label">Fuhren (${state.fuhren.filter(f=>f.status==='fertig').length} fertig)</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Auf Silo ziehen zum Zuordnen</div>
+        ${state.fuhren.filter(f=>f.status==='fertig').sort((a,b)=>new Date(b.zeit)-new Date(a.zeit)).map(fuhreItem).join('')}
+        ${!state.fuhren.filter(f=>f.status==='fertig').length ? '<div class="empty-state">Keine fertigen Fuhren.</div>' : ''}
+      </div>
+      <!-- RIGHT: Silos -->
+      <div>
+        <div class="section-label">Großsilos (5 × 1.000 t)</div>
+        <div class="silo-grid">${bigSilos.map(siloCard).join('')}</div>
+        <div class="section-label" style="margin-top:12px">Kleinsilos (21 × 300 t)</div>
+        <div class="silo-grid">${smallSilos.map(siloCard).join('')}</div>
+      </div>
+    </div>`;
+}
+
+async function dropFuhreOnSilo(event, siloId) {
+  event.preventDefault();
+  const fId = _dragFuhreId;
+  if(!fId) return;
+  const f = state.fuhren.find(x=>x.id===fId);
+  const silo = state.silos.find(s=>s.id===siloId);
+  if(!f || !silo) return;
+  // Check kultur match
+  if(silo.fruchtart && silo.fruchtart !== f.fruchtart) {
+    if(!confirm(`Silo ${siloId} ist für ${silo.fruchtart} vorgesehen. Trotzdem ${f.fruchtart} zuordnen?`)) return;
+  }
+  f.siloId = siloId;
+  renderSiloManagement();
+  try { await db.updateFuhre(fId, {siloId}); showToast(`✓ ${f.nr} → Silo ${siloId}`); }
+  catch(e) { showToast('⚠ '+e.message,'error'); }
+}
+
+async function removeFuhreFromSilo(fId) {
+  const f = state.fuhren.find(x=>x.id===fId);
+  if(!f) return;
+  f.siloId = null;
+  renderSiloManagement();
+  try { await db.updateFuhre(fId, {siloId: null}); }
+  catch(e) { showToast('⚠ '+e.message,'error'); }
+}
+
+function editSiloKultur(siloId) {
+  const silo = state.silos.find(s=>s.id===siloId);
+  if(!silo) return;
+  const fruchtarten = [...new Set(state.felder.map(f=>f.fruchtart))].sort();
+  const current = silo.fruchtart || '';
+  const opts = ['— keine —',...fruchtarten].map(fa=>`<option value="${fa==='— keine —'?'':fa}" ${current===(fa==='— keine —'?'':fa)?'selected':''}>${fa}</option>`).join('');
+  // Small inline modal using toast area
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;min-width:240px;box-shadow:var(--shadow)">
+    <div style="font-weight:600;margin-bottom:12px">Silo ${siloId} – Kultur festlegen</div>
+    <select id="silo-kultur-sel" style="width:100%;margin-bottom:12px">${opts}</select>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary btn-sm" onclick="saveSiloKultur('${siloId}')">Speichern</button>
+      <button class="btn btn-outline btn-sm" onclick="this.closest('[style*=fixed]').remove()">Abbrechen</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+async function saveSiloKultur(siloId) {
+  const sel = document.getElementById('silo-kultur-sel');
+  if(!sel) return;
+  const fruchtart = sel.value || null;
+  const silo = state.silos.find(s=>s.id===siloId);
+  if(silo) silo.fruchtart = fruchtart;
+  document.querySelector('[style*="position:fixed"][style*="inset:0"]')?.remove();
+  renderSiloManagement();
+  try { await db.updateSilo(siloId, {fruchtart}); showToast(`✓ Silo ${siloId}: ${fruchtart||'keine Kultur'}`); }
+  catch(e) { showToast('⚠ '+e.message,'error'); }
+}
+
+// ─── SILOMEISTER VIEW ───
+function renderSilomeister() {
+  document.getElementById('main-content').innerHTML = `
+    <div style="padding:0">
+      <div style="background:var(--card);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:var(--serif);font-size:16px;color:var(--gold2)">🏭 Silomanagement</div>
+      </div>
+      <div style="padding:16px" id="silo-main"></div>
+    </div>`;
+  renderSiloManagement();
 }
 
 function exportCSV() {
