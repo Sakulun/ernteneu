@@ -354,8 +354,7 @@ const db = {
       zeit: f.zeit,
       verifiziert: f.verifiziert || false,
       verifiziertVon: f.verifiziert_von || null,
-      siloId: f.silo_id || null,
-      // korrigierte Felder (admin edits)
+      siloId: f.silo_id || null,      // korrigierte Felder (admin edits)
       feldIdKorr: f.feld_id_korr || null,
       drescherId: f.drescher_id_korr || f.drescher_id,
       abfahrerId: f.abfahrer_id_korr || f.abfahrer_id,
@@ -440,13 +439,19 @@ function hideLoader() {
 async function bootApp() {
   showLoader('Verbinde mit Datenbank…');
   try {
-    const [nutzer, felder, fuhren, silos] = await Promise.all([
-      db.getNutzer(), db.getFelder(), db.getFuhren(), db.getSilos()
+    const [nutzer, felder, fuhren] = await Promise.all([
+      db.getNutzer(), db.getFelder(), db.getFuhren()
     ]);
     state.users = nutzer;
     state.felder = felder;
     state.fuhren = fuhren;
-    state.silos = silos;
+    // Silos optional – Tabelle existiert erst nach Migration
+    try {
+      state.silos = await db.getSilos();
+    } catch(e) {
+      console.warn('Silos-Tabelle nicht gefunden – Migration noch nicht ausgeführt:', e.message);
+      state.silos = [];
+    }
     // nextNr from max fuhre nr
     const nrs = fuhren.map(f=>parseInt((f.nr||'').replace('F-',''))).filter(n=>!isNaN(n));
     state.nextNr = nrs.length ? Math.max(...nrs)+1 : 1;
@@ -754,6 +759,7 @@ function loginUser(user) {
   if(user.role !== "admin") shareUserGPS(user.id);
 }
 function logout() {
+  hideSiloOverlay();
   if(_drescherMap){_drescherMap.remove();_drescherMap=null;}
   if(_mapInstance){_mapInstance.remove();_mapInstance=null;}
   state.currentUser = null;
@@ -1058,7 +1064,7 @@ function renderAdmin() {
       const tab = btn.getAttribute('onclick').match(/'(\w+)'/)?.[1];
       btn.classList.toggle('active', tab === adminTab);
     });
-    // Karte braucht kein inner-padding
+    // Karte + Silos brauchen kein inner-padding
     const inner = document.getElementById('admin-main-inner');
     if(inner) inner.style.padding = adminTab==='karte' ? '0' : '16px';
   }
@@ -1068,11 +1074,15 @@ function renderAdmin() {
   else if(adminTab==='fortschritt') renderAdminFortschritt();
   else if(adminTab==='nutzer') renderAdminNutzer();
   else if(adminTab==='karte') renderAdminKarte();
-  else if(adminTab==='silos') renderSiloManagement();
+  else if(adminTab==='silos') {
+    document.getElementById('admintab').innerHTML = '';
+    showSiloOverlay();
+  }
   else renderAdminFuhren();
 }
 
 function setAdminTab(tab) {
+  if(tab !== 'silos') hideSiloOverlay();
   adminTab = tab;
   // Close mobile sidebar
   const sb = document.getElementById('admin-sidebar');
@@ -1977,98 +1987,201 @@ function updateAllDriverMarkers(map, layers) {
 
 // ─── SILO MANAGEMENT ───
 let _dragFuhreId = null;
+let _activeSiloId = null;
+let _siloView = 'B';
 
 function getSiloFill(siloId) {
-  // sum netto kg of fuhren assigned to this silo
   return state.fuhren
     .filter(f => f.siloId === siloId && f.status === 'fertig')
     .reduce((s,f) => s+(netto(f)||0), 0);
 }
 
+function getSiloKultur(siloId) {
+  // Kultur wird durch erste eingelagerte Fuhre bestimmt
+  const silo = state.silos.find(s=>s.id===siloId);
+  if(silo?.fruchtart) return silo.fruchtart;
+  const firstFuhre = state.fuhren.find(f=>f.siloId===siloId&&f.status==='fertig');
+  return firstFuhre?.fruchtart || null;
+}
+
+
+function showSiloOverlay() {
+  let ov = document.getElementById('silo-overlay');
+  if(!ov) {
+    ov = document.createElement('div');
+    ov.id = 'silo-overlay';
+    document.body.appendChild(ov);
+  }
+  ov.style.cssText = 'position:fixed;top:49px;left:0;right:0;bottom:0;height:calc(100vh - 49px);background:var(--bg);z-index:200;overflow:hidden';
+  renderSiloManagement();
+}
+
+function hideSiloOverlay() {
+  const ov = document.getElementById('silo-overlay');
+  if(ov) ov.style.display = 'none';
+}
+
 function renderSiloManagement() {
   const bigSilos = state.silos.filter(s=>s.kapazitaet_t>=1000).sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true}));
   const smallSilos = state.silos.filter(s=>s.kapazitaet_t<1000).sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true}));
-
-  // Unassigned fertige fuhren
   const unassigned = state.fuhren.filter(f=>f.status==='fertig'&&!f.siloId).sort((a,b)=>new Date(b.zeit)-new Date(a.zeit));
-  const assigned = state.fuhren.filter(f=>f.status==='fertig'&&f.siloId).sort((a,b)=>new Date(b.zeit)-new Date(a.zeit));
+  const totalFertig = state.fuhren.filter(f=>f.status==='fertig').length;
+  const totalAssigned = state.fuhren.filter(f=>f.status==='fertig'&&f.siloId).length;
+  const showingB = _siloView === 'B';
 
-  const siloCard = (s) => {
+  const sc = (s) => {
     const fillKg = getSiloFill(s.id);
     const fillT = fillKg/1000;
-    const pct = Math.min(100, (fillT/s.kapazitaet_t)*100);
+    const pct = Math.min(100,(fillT/s.kapazitaet_t)*100);
     const overfull = fillT > s.kapazitaet_t;
-    const barColor = overfull ? 'var(--red)' : pct>85 ? 'var(--amber)' : 'var(--green)';
-    const assignedFuhren = state.fuhren.filter(f=>f.siloId===s.id&&f.status==='fertig');
-    const siloFuhrenHtml = assignedFuhren.map(f=>`
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:10px">
-        <span style="color:var(--text2)">${f.nr} · ${f.fruchtart}</span>
-        <span style="color:var(--text3)">${netto(f)?(netto(f)/1000).toFixed(2)+' t':'–'}</span>
-        <button onclick="removeFuhreFromSilo(${f.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:0 2px">✕</button>
-      </div>`).join('');
-
-    return `<div class="silo-card ${overfull?'overfull':''}"
-      ondragover="event.preventDefault();this.classList.add('drag-over')"
-      ondragleave="this.classList.remove('drag-over')"
-      ondrop="dropFuhreOnSilo(event,'${s.id}');this.classList.remove('drag-over')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
-          <div class="silo-name">${s.id}</div>
-          <div class="silo-kultur">${s.fruchtart||'— keine Kultur —'}</div>
-        </div>
-        <button onclick="editSiloKultur('${s.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:2px" title="Kultur festlegen">✏</button>
-      </div>
-      <div class="silo-bar-wrap"><div class="silo-bar" style="width:${pct.toFixed(1)}%;background:${barColor}"></div></div>
-      <div class="silo-stats">
-        <span style="color:${overfull?'var(--red)':'inherit'}">${fillT.toFixed(1)}t</span>
-        <span>${pct.toFixed(0)}%</span>
-        <span>${s.kapazitaet_t}t</span>
-      </div>
-      ${assignedFuhren.length ? `
-        <details style="margin-top:8px">
-          <summary style="font-size:10px;color:var(--text3);cursor:pointer">${assignedFuhren.length} Fuhren</summary>
-          <div style="margin-top:4px">${siloFuhrenHtml}</div>
-        </details>` : ''}
-    </div>`;
+    const kultur = getSiloKultur(s.id);
+    const isBig = s.kapazitaet_t >= 1000;
+    const sz = isBig ? 100 : 86;
+    const r = (sz/2)-7;
+    const circ = 2*Math.PI*r;
+    const fc = overfull?'#ef4444':pct>85?'#e0943a':pct>0?'#4caf6e':'#2a422a';
+    const sd = (pct/100*circ).toFixed(1)+' '+circ.toFixed(1);
+    const active = _activeSiloId===s.id;
+    const cnt = state.fuhren.filter(f=>f.siloId===s.id).length;
+    const kl = kultur ? kultur.replace('Winterweichweizen','W.Weizen').replace('Wintergerste','W.Gerste').replace('Winterraps','W.Raps').replace('Winter','W.').replace('Sommer','So.') : '';
+    return '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px" onclick="openSiloDetail(''+s.id+'')">'+
+      '<div style="width:'+sz+'px;height:'+sz+'px"'+
+      ' ondragover="event.preventDefault();this.querySelector('circle').style.stroke='var(--gold)'"'+
+      ' ondragleave="this.querySelector('circle').style.stroke=''+(active?'var(--gold)':'#2a422a')+''"'+
+      ' ondrop="dropFuhreOnSilo(event,''+s.id+'');this.querySelector('circle').style.stroke=''+(active?'var(--gold)':'#2a422a')+''">'+
+      '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 '+sz+' '+sz+'">'+
+      '<circle cx="'+(sz/2)+'" cy="'+(sz/2)+'" r="'+r+'" fill="'+(active?'#1e321e':'#161e16')+'" stroke="'+(active?'var(--gold)':'#2a422a')+'" stroke-width="'+(active?3:1.5)+'"/>'+
+      '<circle cx="'+(sz/2)+'" cy="'+(sz/2)+'" r="'+r+'" fill="none" stroke="'+fc+'" stroke-width="'+(isBig?9:7)+'"'+
+      ' stroke-dasharray="'+sd+'" transform="rotate(-90 '+(sz/2)+' '+(sz/2)+')" style="transition:stroke-dasharray .4s"/>'+
+      '<text x="'+(sz/2)+'" y="'+(sz/2-6)+'" text-anchor="middle" fill="#e8f0e8" font-size="'+(isBig?14:12)+'" font-weight="700" font-family="monospace">'+s.id+'</text>'+
+      '<text x="'+(sz/2)+'" y="'+(sz/2+8)+'" text-anchor="middle" fill="'+fc+'" font-size="'+(isBig?11:9)+'" font-family="monospace">'+fillT.toFixed(1)+'t</text>'+
+      (pct>0?'<text x="'+(sz/2)+'" y="'+(sz/2+19)+'" text-anchor="middle" fill="#5a7a5a" font-size="8" font-family="monospace">'+pct.toFixed(0)+'%</text>':'')+
+      '</svg></div>'+
+      '<div style="font-size:9px;text-align:center;max-width:'+sz+'px;line-height:1.4">'+
+      (kl?'<span style="color:var(--gold2)">'+kl+'</span>':'<span style="color:var(--text3)">leer</span>')+
+      (cnt?'<br><span style="color:var(--text3)">'+cnt+' Fhm</span>':'')+
+      '</div></div>';
   };
 
-  const fuhreItem = (f) => {
-    const n = netto(f);
-    const assigned = !!f.siloId;
-    return `<div class="fuhre-drag-item ${assigned?'assigned':''}"
-      draggable="true"
-      ondragstart="_dragFuhreId=${f.id};this.classList.add('dragging')"
-      ondragend="this.classList.remove('dragging')"
-      id="drag-fuhre-${f.id}">
-      <span style="font-size:13px">${f.verifiziert?'✓':'⏳'}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:500">${f.nr}</div>
-        <div style="font-size:10px;color:var(--text3)">${f.fruchtart} · ${n?(n/1000).toFixed(2)+' t':'?'}</div>
-      </div>
-      ${assigned ? `<span style="font-size:10px;color:var(--blue);flex-shrink:0">${f.siloId}</span>` : ''}
-    </div>`;
+  const bList = '<div style="display:flex;flex-direction:column;gap:8px;align-items:center;padding:8px">'+bigSilos.map(sc).join('')+'</div>';
+
+  // A-Silos: 3 Spalten, A1-A7 links, A8-A14 mitte, A15-A21 rechts (top-down per column)
+  const col = (arr) => '<div style="display:flex;flex-direction:column;gap:8px">'+arr.map(sc).join('')+'</div>';
+  const aGrid = '<div style="display:flex;gap:16px;justify-content:center;padding:8px">'+
+    col(smallSilos.slice(0,7))+col(smallSilos.slice(7,14))+col(smallSilos.slice(14,21))+'</div>';
+
+  const fi = (f) => {
+    const n=netto(f);
+    return '<div class="fuhre-drag-item" draggable="true"'+
+      ' ondragstart="_dragFuhreId='+f.id+';this.classList.add('dragging')"'+
+      ' ondragend="this.classList.remove('dragging')">'+
+      '<span style="font-size:11px;flex-shrink:0">'+(f.verifiziert?'<span style=color:var(--green)>✓</span>':'<span style=color:var(--gold2)>⏳</span>')+'</span>'+
+      '<div style="flex:1;min-width:0">'+
+      '<div style="font-size:12px;font-weight:600">'+f.nr+' <span style="font-weight:400;color:var(--text3);font-size:10px">'+f.fruchtart+'</span></div>'+
+      '<div style="font-size:10px;color:var(--text3)">'+(n?(n/1000).toFixed(2)+' t':'')+' · '+(f.feuchte??'–')+'%F · '+(f.protein??'–')+'%P</div>'+
+      '</div>'+
+      '<span style="font-size:10px;color:var(--text3);flex-shrink:0">'+new Date(f.zeit).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})+'</span>'+
+      '</div>';
   };
 
-  const el = document.getElementById('admintab') || document.getElementById('silo-main');
+  const el = document.getElementById('silo-overlay') || document.getElementById('silo-main');
   if(!el) return;
-  el.innerHTML = `
-    <div style="display:grid;grid-template-columns:280px 1fr;gap:16px;min-height:60vh">
-      <!-- LEFT: Fuhren-Liste -->
-      <div>
-        <div class="section-label">Fuhren (${state.fuhren.filter(f=>f.status==='fertig').length} fertig)</div>
-        <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Auf Silo ziehen zum Zuordnen</div>
-        ${state.fuhren.filter(f=>f.status==='fertig').sort((a,b)=>new Date(b.zeit)-new Date(a.zeit)).map(fuhreItem).join('')}
-        ${!state.fuhren.filter(f=>f.status==='fertig').length ? '<div class="empty-state">Keine fertigen Fuhren.</div>' : ''}
-      </div>
-      <!-- RIGHT: Silos -->
-      <div>
-        <div class="section-label">Großsilos (5 × 1.000 t)</div>
-        <div class="silo-grid">${bigSilos.map(siloCard).join('')}</div>
-        <div class="section-label" style="margin-top:12px">Kleinsilos (21 × 300 t)</div>
-        <div class="silo-grid">${smallSilos.map(siloCard).join('')}</div>
-      </div>
-    </div>`;
+  el.innerHTML =
+    '<div style="display:flex;flex-direction:column;height:calc(100vh - 49px);overflow:hidden">'+
+    '<div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--card)">'+
+    '<div style="font-family:var(--serif);font-size:16px;color:var(--gold2)">🏭 Silomanagement</div>'+
+    '<div style="display:flex;align-items:center;gap:12px">'+
+    '<div style="display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:3px;gap:2px">'+
+    '<button onclick="_siloView='B';renderSiloManagement()" style="padding:5px 18px;border-radius:16px;border:none;cursor:pointer;font-family:var(--mono);font-size:13px;font-weight:700;transition:all .15s;background:'+(showingB?'var(--gold)':'transparent')+';color:'+(showingB?'#1a1400':'var(--text3)')+'">B</button>'+
+    '<button onclick="_siloView='A';renderSiloManagement()" style="padding:5px 18px;border-radius:16px;border:none;cursor:pointer;font-family:var(--mono);font-size:13px;font-weight:700;transition:all .15s;background:'+(!showingB?'var(--gold)':'transparent')+';color:'+(!showingB?'#1a1400':'var(--text3)')+'">A</button>'+
+    '</div>'+
+    '<div style="font-size:11px;color:var(--text3)">'+(showingB?'5 × 1.000 t':'21 × 300 t')+'</div>'+
+    '<button class="btn btn-sm btn-outline" onclick="exportSiloCSV()">⬇ CSV</button>'+
+    '</div></div>'+
+    '<div style="display:flex;flex:1;overflow:hidden">'+
+    '<div style="width:200px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column">'+
+    '<div style="padding:8px 12px;border-bottom:1px solid var(--border)">'+
+    '<div style="font-size:11px;font-weight:600;color:var(--text)">Warteschlange</div>'+
+    '<div style="font-size:10px;color:var(--text3)">'+unassigned.length+' offen · '+totalAssigned+'/'+totalFertig+' zugeordnet</div>'+
+    '</div>'+
+    '<div style="flex:1;overflow-y:auto;padding:8px">'+
+    (unassigned.length ? unassigned.map(fi).join('') : '<div style="text-align:center;padding:20px 8px;color:var(--text3);font-size:11px">'+(totalFertig?'✓ Alle zugeordnet':'Keine fertigen Fuhren')+'</div>')+
+    '</div></div>'+
+    '<div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:8px">'+
+    (showingB ? bList : aGrid)+
+    '</div>'+
+    '<div id="silo-detail-panel" style="width:240px;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column;background:var(--bg2)">'+
+    '<div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3)">← Silo anklicken</div>'+
+    '<div id="silo-detail-content" style="flex:1;overflow-y:auto;padding:12px"></div>'+
+    '</div></div></div>';
+
+  if(_activeSiloId) renderSiloDetail(_activeSiloId);
 }
+
+function openSiloDetail(siloId) {
+  _activeSiloId = siloId;
+  renderSiloDetail(siloId);
+  // Re-render silo circles to update active state without full re-render
+  document.querySelectorAll('[onclick^="openSiloDetail"]').forEach(el => {
+    const id = el.getAttribute('onclick').match(/'([^']+)'/)?.[1];
+    const circle = document.getElementById('sc-'+id);
+    if(circle) {
+      circle.style.stroke = id===siloId ? 'var(--gold)' : '#2a422a';
+      circle.style.strokeWidth = id===siloId ? '3' : '1.5';
+      circle.style.fill = id===siloId ? '#1e321e' : '#161e16';
+    }
+  });
+}
+
+function renderSiloDetail(siloId) {
+  const panel = document.getElementById('silo-detail-content');
+  if(!panel) return;
+  const silo = state.silos.find(s=>s.id===siloId);
+  if(!silo) return;
+  const assignedFuhren = state.fuhren.filter(f=>f.siloId===siloId&&f.status==='fertig').sort((a,b)=>new Date(b.zeit)-new Date(a.zeit));
+  const fillT = getSiloFill(siloId)/1000;
+  const pct = Math.min(100,(fillT/silo.kapazitaet_t)*100);
+  const kultur = getSiloKultur(siloId);
+  const avgFeuchte = assignedFuhren.length ? (assignedFuhren.reduce((s,f)=>s+(f.feuchte||0),0)/assignedFuhren.length).toFixed(1) : null;
+  const avgProtein = assignedFuhren.length ? (assignedFuhren.reduce((s,f)=>s+(f.protein||0),0)/assignedFuhren.length).toFixed(1) : null;
+  const avgHL = assignedFuhren.length ? (assignedFuhren.reduce((s,f)=>s+(f.hlGewicht||0),0)/assignedFuhren.length).toFixed(1) : null;
+  const avgFallzahl = assignedFuhren.filter(f=>f.fallzahl).length ? (assignedFuhren.filter(f=>f.fallzahl).reduce((s,f)=>s+(f.fallzahl||0),0)/assignedFuhren.filter(f=>f.fallzahl).length).toFixed(0) : null;
+
+  panel.innerHTML = `
+    <div style="font-family:var(--serif);font-size:20px;font-weight:600;color:var(--gold2);margin-bottom:2px">Silo ${siloId}</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">${silo.kapazitaet_t} t Kapazität${kultur?' · '+kultur:''}</div>
+    <div style="background:var(--bg3);border-radius:4px;height:8px;overflow:hidden;margin-bottom:4px">
+      <div style="width:${pct.toFixed(1)}%;height:100%;background:${pct>85?'var(--amber)':'var(--green)'};border-radius:4px;transition:width .3s"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:14px">
+      <span>${fillT.toFixed(1)} t befüllt</span><span>${pct.toFixed(0)}%</span>
+    </div>
+    ${avgFeuchte ? `
+    <div style="background:var(--bg3);border-radius:8px;padding:10px;margin-bottom:12px">
+      <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Ø Qualität</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div style="font-size:11px"><span style="color:var(--text3)">Feuchte </span><span style="color:var(--text)">${avgFeuchte}%</span></div>
+        <div style="font-size:11px"><span style="color:var(--text3)">Protein </span><span style="color:var(--text)">${avgProtein}%</span></div>
+        <div style="font-size:11px"><span style="color:var(--text3)">HL-Gew </span><span style="color:var(--text)">${avgHL}</span></div>
+        ${avgFallzahl?`<div style="font-size:11px"><span style="color:var(--text3)">Fallzahl </span><span style="color:var(--text)">${avgFallzahl}</span></div>`:''}
+      </div>
+    </div>` : ''}
+    <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:8px">${assignedFuhren.length} Fuhren</div>
+    ${assignedFuhren.map(f => {
+      const n = netto(f);
+      return `<div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;background:var(--bg)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:600">${f.nr}</span>
+          <span style="font-size:11px;color:var(--gold2)">${n?(n/1000).toFixed(2)+' t':'–'}</span>
+          <button onclick="removeFuhreFromSilo(${f.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:0" title="Entfernen">✕</button>
+        </div>
+        <div style="font-size:10px;color:var(--text3)">${getFeld(f.feldId).name||'–'} · ${new Date(f.zeit).toLocaleDateString('de-DE')}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">${f.feuchte??'–'}%F · ${f.protein??'–'}%P · HL${f.hlGewicht??'–'}${f.fallzahl?' · FZ'+f.fallzahl:''}</div>
+      </div>`;
+    }).join('')}
+    ${!assignedFuhren.length?'<div style="text-align:center;padding:20px 0;color:var(--text3);font-size:11px">Leer – Fuhre herziehen</div>':''}`;
+}
+
 
 async function dropFuhreOnSilo(event, siloId) {
   event.preventDefault();
@@ -2077,82 +2190,98 @@ async function dropFuhreOnSilo(event, siloId) {
   const f = state.fuhren.find(x=>x.id===fId);
   const silo = state.silos.find(s=>s.id===siloId);
   if(!f || !silo) return;
-  // Check kultur match
-  if(silo.fruchtart && silo.fruchtart !== f.fruchtart) {
-    if(!confirm(`Silo ${siloId} ist für ${silo.fruchtart} vorgesehen. Trotzdem ${f.fruchtart} zuordnen?`)) return;
+
+  // Kultur wird durch erste Fuhre festgelegt
+  const siloKultur = getSiloKultur(siloId);
+  if(siloKultur && siloKultur !== f.fruchtart) {
+    showToast(`⚠ Silo ${siloId} enthält ${siloKultur} – keine andere Kultur möglich`, 'error');
+    return;
   }
+
+  // Wenn erstes Einlagern: Kultur automatisch setzen
+  const isFirst = !siloKultur;
   f.siloId = siloId;
+  if(isFirst) {
+    silo.fruchtart = f.fruchtart;
+    try { await db.updateSilo(siloId, {fruchtart: f.fruchtart}); } catch(e) {}
+  }
+
   renderSiloManagement();
-  try { await db.updateFuhre(fId, {siloId}); showToast(`✓ ${f.nr} → Silo ${siloId}`); }
-  catch(e) { showToast('⚠ '+e.message,'error'); }
+  try {
+    await db.updateFuhre(fId, {siloId});
+    showToast(`✓ ${f.nr} → Silo ${siloId}${isFirst?' (Kultur festgelegt: '+f.fruchtart+')':''}`);
+  } catch(e) { showToast('⚠ '+e.message,'error'); }
 }
 
 async function removeFuhreFromSilo(fId) {
   const f = state.fuhren.find(x=>x.id===fId);
   if(!f) return;
+  const siloId = f.siloId;
   f.siloId = null;
+  // Wenn letztes Entfernen: Kultur des Silos zurücksetzen
+  const silo = state.silos.find(s=>s.id===siloId);
+  const remaining = state.fuhren.filter(x=>x.siloId===siloId&&x.status==='fertig');
+  if(silo && remaining.length === 0) {
+    silo.fruchtart = null;
+    try { await db.updateSilo(siloId, {fruchtart: null}); } catch(e) {}
+  }
   renderSiloManagement();
   try { await db.updateFuhre(fId, {siloId: null}); }
   catch(e) { showToast('⚠ '+e.message,'error'); }
 }
 
-function editSiloKultur(siloId) {
-  const silo = state.silos.find(s=>s.id===siloId);
-  if(!silo) return;
-  const fruchtarten = [...new Set(state.felder.map(f=>f.fruchtart))].sort();
-  const current = silo.fruchtart || '';
-  const opts = ['— keine —',...fruchtarten].map(fa=>`<option value="${fa==='— keine —'?'':fa}" ${current===(fa==='— keine —'?'':fa)?'selected':''}>${fa}</option>`).join('');
-  // Small inline modal using toast area
-  const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9000;display:flex;align-items:center;justify-content:center';
-  modal.innerHTML = `<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;min-width:240px;box-shadow:var(--shadow)">
-    <div style="font-weight:600;margin-bottom:12px">Silo ${siloId} – Kultur festlegen</div>
-    <select id="silo-kultur-sel" style="width:100%;margin-bottom:12px">${opts}</select>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-primary btn-sm" onclick="saveSiloKultur('${siloId}')">Speichern</button>
-      <button class="btn btn-outline btn-sm" onclick="this.closest('[style*=fixed]').remove()">Abbrechen</button>
-    </div>
-  </div>`;
-  document.body.appendChild(modal);
-}
-
-async function saveSiloKultur(siloId) {
-  const sel = document.getElementById('silo-kultur-sel');
-  if(!sel) return;
-  const fruchtart = sel.value || null;
-  const silo = state.silos.find(s=>s.id===siloId);
-  if(silo) silo.fruchtart = fruchtart;
-  document.querySelector('[style*="position:fixed"][style*="inset:0"]')?.remove();
-  renderSiloManagement();
-  try { await db.updateSilo(siloId, {fruchtart}); showToast(`✓ Silo ${siloId}: ${fruchtart||'keine Kultur'}`); }
-  catch(e) { showToast('⚠ '+e.message,'error'); }
-}
-
 // ─── SILOMEISTER VIEW ───
 function renderSilomeister() {
-  document.getElementById('main-content').innerHTML = `
-    <div style="padding:0">
-      <div style="background:var(--card);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
-        <div style="font-family:var(--serif);font-size:16px;color:var(--gold2)">🏭 Silomanagement</div>
-      </div>
-      <div style="padding:16px" id="silo-main"></div>
-    </div>`;
-  renderSiloManagement();
+  document.getElementById('main-content').innerHTML = '';
+  showSiloOverlay();
 }
 
 function exportCSV() {
-  const h=['Nr','Datum','Uhrzeit','Schlag','Fruchtart','Drescher','Abfahrer','Vollgew_kg','Leergew_kg','Netto_kg','Netto_t','Feuchte_%','Fallzahl','Protein_%','HL_Gew','Status'];
+  const h=['Nr','Datum','Uhrzeit','Schlag','Fruchtart','Drescher','Abfahrer','Vollgew_kg','Leergew_kg','Netto_kg','Netto_t','Feuchte_%','Fallzahl','Protein_%','HL_Gew','Status','Verifiziert','Silo'];
   const rows=state.fuhren.map(f=>{
     const d=new Date(f.zeit);const n=netto(f);
     return [f.nr,d.toLocaleDateString('de-DE'),d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}),
       getFeld(f.feldId).name||'',f.fruchtart||'',getUser(f.drescherId).name||'',getUser(f.abfahrerId).name||'',
       f.vollgewicht||'',f.leergewicht||'',n||'',n?(n/1000).toFixed(3):'',
-      f.feuchte||'',f.fallzahl||'',f.protein||'',f.hlGewicht||'',f.status].join(';');
+      f.feuchte||'',f.fallzahl||'',f.protein||'',f.hlGewicht||'',f.status,
+      f.verifiziert?'Ja':'Nein',f.siloId||''].join(';');
   });
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['﻿'+[h.join(';'),...rows].join('\n'),{type:'text/csv;charset=utf-8'}]));
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+[h.join(';'),...rows].join('\n')],{type:'text/csv;charset=utf-8'}));
   a.download='Ernte2026_Export.csv';a.click();
 }
+
+function exportSiloCSV() {
+  const avg = (arr,key) => {
+    const valid = arr.filter(f=>f[key]!=null);
+    return valid.length ? (valid.reduce((s,f)=>s+(f[key]||0),0)/valid.length).toFixed(1) : '';
+  };
+  // Summary sheet
+  const h=['Silo','Kapazitaet_t','Kultur','Befuellt_t','Auslastung_%','Fuhren','Ø_Feuchte_%','Ø_Protein_%','Ø_HL_Gew','Ø_Fallzahl'];
+  const siloRows = state.silos.sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true})).map(s=>{
+    const fuhren = state.fuhren.filter(f=>f.siloId===s.id&&f.status==='fertig');
+    const fillT = (getSiloFill(s.id)/1000).toFixed(2);
+    const pct = (getSiloFill(s.id)/1000/s.kapazitaet_t*100).toFixed(1);
+    return [s.id,s.kapazitaet_t,getSiloKultur(s.id)||'',fillT,pct,fuhren.length,
+      avg(fuhren,'feuchte'),avg(fuhren,'protein'),avg(fuhren,'hlGewicht'),avg(fuhren,'fallzahl')].join(';');
+  });
+  // Detail rows
+  const lines = [h.join(';'), ...siloRows, '', 'FUHREN JE SILO','Nr;Datum;Schlag;Fruchtart;Netto_t;Feuchte;Protein;HL_Gew;Fallzahl;Silo'];
+  state.silos.sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true})).forEach(s=>{
+    const fuhren = state.fuhren.filter(f=>f.siloId===s.id&&f.status==='fertig').sort((a,b)=>new Date(a.zeit)-new Date(b.zeit));
+    if(!fuhren.length) return;
+    lines.push('=== Silo '+s.id+' ('+( getSiloKultur(s.id)||'leer')+') ===');
+    fuhren.forEach(f=>{
+      const n=netto(f);
+      lines.push([f.nr,new Date(f.zeit).toLocaleDateString('de-DE'),getFeld(f.feldId).name||'',
+        f.fruchtart||'',n?(n/1000).toFixed(3):'',f.feuchte||'',f.protein||'',f.hlGewicht||'',f.fallzahl||'',s.id].join(';'));
+    });
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'}));
+  a.download='Ernte2026_Silos.csv';a.click();
+}
+
 
 bootApp();
 </script>
