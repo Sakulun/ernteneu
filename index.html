@@ -510,12 +510,12 @@ async function bootApp() {
 const state = {
   currentUser: null,
   users: [
-    { id:1, name:'Hans Müller', role:'drescher', label:'Drescherfahrer', pw:'drescher1' },
-    { id:2, name:'Karl Bauer', role:'drescher', label:'Drescherfahrer', pw:'drescher2' },
-    { id:3, name:'Peter Schmidt', role:'abfahrer', label:'Abfahrer / Waage', pw:'abfahrer1' },
-    { id:4, name:'Thomas Wagner', role:'abfahrer', label:'Abfahrer / Waage', pw:'abfahrer2' },
-    { id:5, name:'Fritz Lange', role:'abfahrer', label:'Abfahrer / Waage', pw:'abfahrer3' },
-    { id:6, name:'Betriebsleiter', role:'admin', label:'Admin / Übersicht', pw:'admin123' },
+    { id:1, name:'Hans Müller', _plainpw:'drescher1', role:'drescher', label:'Drescherfahrer', pw:'7be8f20237f5bc28ad9c160e0c434204be71691893cf4561914e38c20844d726' },
+    { id:2, name:'Karl Bauer', _plainpw:'drescher2', role:'drescher', label:'Drescherfahrer', pw:'e47c343a5dd7604dd4337fa9ab0de48dc610f808c4019f2b52907af98f4dd1f8' },
+    { id:3, name:'Peter Schmidt', _plainpw:'abfahrer1', role:'abfahrer', label:'Abfahrer / Waage', pw:'538e9d933b70d2b5668de24aa458ef72ce03c98b1458062fb20d5aabaa82992b' },
+    { id:4, name:'Thomas Wagner', _plainpw:'abfahrer2', role:'abfahrer', label:'Abfahrer / Waage', pw:'7cb5d7c0295a233e89f7d3c2831ce835c898384b95b1c4cc506cd4e69c950e18' },
+    { id:5, name:'Fritz Lange', _plainpw:'abfahrer3', role:'abfahrer', label:'Abfahrer / Waage', pw:'42aed994f60ef88337b74851127be6ec3910c52630e67189c2a92e09d408cff6' },
+    { id:6, name:'Betriebsleiter', _plainpw:'admin123', role:'admin', label:'Admin / Übersicht', pw:'240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9' },
   ],
   nextUserId: 7,
   felder: [
@@ -721,9 +721,10 @@ function renderLogin() {
     btn.onmouseleave = () => btn.style.borderColor = 'var(--border)';
     const dc = u.role==='drescher'?'var(--amber)':u.role==='abfahrer'?'var(--blue)':'var(--gold)';
     btn.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:${dc};flex-shrink:0;display:inline-block"></span>${u.name}`;
+    btn.dataset.plainpw = u._plainpw || '';
     btn.onclick = () => {
       document.getElementById('login-name').value = u.name;
-      document.getElementById('login-pw').value = u.pw;
+      document.getElementById('login-pw').value = btn.dataset.plainpw;
       document.getElementById('login-error').style.display = 'none';
     };
     ul.appendChild(btn);
@@ -735,11 +736,13 @@ function togglePw() {
   inp.type = inp.type === 'password' ? 'text' : 'password';
 }
 
-function doLogin() {
+async function doLogin() {
   const name = document.getElementById('login-name').value.trim();
   const pw = document.getElementById('login-pw').value;
-  const user = state.users.find(u => u.name.toLowerCase() === name.toLowerCase() && u.pw === pw);
   const errEl = document.getElementById('login-error');
+  if(!name || !pw) { errEl.style.display = 'block'; return; }
+  const hashed = await hashPW(pw);
+  const user = state.users.find(u => u.name.toLowerCase() === name.toLowerCase() && u.pw === hashed);
   if(!user) { errEl.style.display = 'block'; return; }
   errEl.style.display = 'none';
   loginUser(user);
@@ -1697,7 +1700,7 @@ function renderAdminNutzer() {
       <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0;display:inline-block"></span>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:500">${u.name}${isSelf?' <span style="font-size:10px;color:var(--text3)">(du)</span>':''}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">${roleLabel(u.role)} · PW: ${'•'.repeat(u.pw.length)}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${roleLabel(u.role)} · PW: ••••••••</div>
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0">
         <button class="btn btn-sm btn-outline" onclick="nutzerEditStart(${u.id})">&#9998; Bearbeiten</button>
@@ -1763,7 +1766,8 @@ async function nutzerAnlegen() {
   if(state.users.find(u=>u.name.toLowerCase()===name.toLowerCase())) {
     alert('Ein Nutzer mit diesem Namen existiert bereits.'); return;
   }
-  const newUser = { name, role, label:roleLabel(role), pw };
+  const pwHash = await hashPW(pw);
+  const newUser = { name, role, label:roleLabel(role), pw: pwHash };
   try {
     await db.upsertNutzer(newUser);
     state.users = await db.getNutzer();
@@ -1793,7 +1797,7 @@ async function nutzerSpeichern(id) {
     alert('Dieser Name ist bereits vergeben.'); return;
   }
   u.name = name; u.role = role; u.label = roleLabel(role);
-  if(pw) u.pw = pw;
+  if(pw) u.pw = await hashPW(pw);
   try {
     await db.upsertNutzer(u);
     showToast('✓ Änderungen gespeichert');
@@ -2117,6 +2121,12 @@ function showSiloOverlay() {
 function hideSiloOverlay() {
   const ov = document.getElementById('silo-overlay');
   if(ov) ov.style.display = 'none';
+}
+
+// ─── SHA-256 HASHING ───
+async function hashPW(pw) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
 // ─── FRUCHTART-FARBEN (global) ───
