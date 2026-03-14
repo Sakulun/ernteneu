@@ -335,6 +335,133 @@ html { -webkit-text-size-adjust: 100%; }
 /* ── Safe area for notched phones ── */
 .topbar { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
 body { padding-bottom: env(safe-area-inset-bottom); }
+
+/* ─── ONBOARDING ─── */
+#onboarding-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.75);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(3px);
+  animation: ob-fade-in 0.3s ease;
+}
+@keyframes ob-fade-in { from { opacity:0 } to { opacity:1 } }
+
+#onboarding-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 440px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  animation: ob-slide-in 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes ob-slide-in { from { transform:translateY(24px);opacity:0 } to { transform:translateY(0);opacity:1 } }
+
+.ob-progress {
+  height: 3px;
+  background: var(--bg3);
+  position: relative;
+}
+.ob-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green), var(--gold));
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.ob-header {
+  padding: 28px 28px 0;
+  text-align: center;
+}
+.ob-icon {
+  font-size: 52px;
+  margin-bottom: 12px;
+  display: block;
+  animation: ob-bounce 0.5s ease 0.2s both;
+}
+@keyframes ob-bounce { 0%{transform:scale(0.5);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+.ob-title {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--gold2);
+  margin-bottom: 6px;
+}
+.ob-subtitle {
+  font-size: 13px;
+  color: var(--text3);
+  line-height: 1.5;
+  margin-bottom: 0;
+}
+.ob-body {
+  padding: 20px 28px;
+}
+.ob-step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  animation: ob-step-in 0.3s ease both;
+}
+.ob-step:last-child { border-bottom: none; }
+@keyframes ob-step-in { from{transform:translateX(-10px);opacity:0} to{transform:translateX(0);opacity:1} }
+.ob-step-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.ob-step-text { flex: 1; }
+.ob-step-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.ob-step-desc {
+  font-size: 12px;
+  color: var(--text3);
+  line-height: 1.5;
+}
+.ob-highlight {
+  display: inline-block;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--gold2);
+}
+.ob-footer {
+  padding: 16px 28px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ob-dots {
+  display: flex;
+  gap: 6px;
+}
+.ob-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  transition: all 0.25s;
+}
+.ob-dot.active {
+  background: var(--gold);
+  border-color: var(--gold);
+  width: 20px;
+  border-radius: 4px;
+}
 </style>
 </head>
 <body>
@@ -917,6 +1044,7 @@ function loginUser(user) {
   document.getElementById('topbar-sync').style.display = 'inline-block';
   renderMain();
   if(user.role !== "admin") shareUserGPS(user.id);
+  checkShowOnboarding(user.role);
   // Auto-collapse sidebar on tablet
   if(user.role === 'admin' && window.innerWidth <= 1024 && window.innerWidth > 640) {
     sidebarCollapsed = true;
@@ -1279,6 +1407,10 @@ function renderAdmin() {
           <button class="sidebar-btn ${adminTab==='silos'?'active':''}" onclick="setAdminTab('silos')">
             <span class="sidebar-icon">🏭</span><span class="sidebar-label">Silomanagement</span>
           </button>
+          <div class="sidebar-section">Maschinenpark</div>
+          <button class="sidebar-btn ${adminTab==='jdlink'?'active':''}" onclick="setAdminTab('jdlink')">
+            <span class="sidebar-icon">🚜</span><span class="sidebar-label">JD Telemetrie</span>
+          </button>
           <div class="sidebar-section">Verkauf</div>
           <button class="sidebar-btn ${adminTab==='warenausgang'?'active':''}" onclick="setAdminTab('warenausgang')">
             <span class="sidebar-icon">🚛</span><span class="sidebar-label">Warenausgang</span>
@@ -1311,6 +1443,7 @@ function renderAdmin() {
   else if(adminTab==='nutzer') renderAdminNutzer();
   else if(adminTab==='karte') renderAdminKarte();
   else if(adminTab==='warenausgang') renderWarenausgang();
+  else if(adminTab==='jdlink') renderJDLink();
   else if(adminTab==='erntejahr') renderNeuesErntejahr();
   else if(adminTab==='silos') {
     document.getElementById('admintab').innerHTML = '';
@@ -1321,6 +1454,7 @@ function renderAdmin() {
 
 function setAdminTab(tab) {
   if(tab !== 'silos') hideSiloOverlay();
+  if(tab !== 'jdlink') { if(_jdPollTimer){clearInterval(_jdPollTimer);_jdPollTimer=null;} if(_jdMap){_jdMap.remove();_jdMap=null;_jdMarkers={};} }
   adminTab = tab;
   // Close mobile sidebar
   const sb = document.getElementById('admin-sidebar');
@@ -1796,6 +1930,8 @@ async function adminFuhreAbschliessenSpeichern(fId) {
   } catch(e) { showToast('⚠ '+e.message, 'error'); }
 }
 
+
+let fortschrittExpanded = {};
 
 function renderAdminFortschritt() {
   // Build kulturen map with per-schlag ertrag
@@ -3210,6 +3346,486 @@ function lieferungPDF(id) {
   win.document.close();
 }
 
+
+// ─── JOHN DEERE JDLINK INTEGRATION ───
+const JD_CLIENT_ID = "0oatm7a63xrKg50rk5d7";
+const JD_CLIENT_SECRET = "ec5Mz9GUacjFSvNBI3Bi2SU3RSFkGFZzptsybR35oAm8AbJ5uHTwBxk7SHep5NnL";
+const JD_REDIRECT_URI = "https://sakulun.github.io/ernteneu/";
+const JD_AUTH_URL = "https://signin.johndeere.com/oauth2/aus78tnlaysMraFhC1t7/v1/authorize";
+const JD_TOKEN_URL = "https://signin.johndeere.com/oauth2/aus78tnlaysMraFhC1t7/v1/token";
+const JD_API_BASE = "https://sandboxapi.deere.com";
+const JD_SCOPES = "openid profile email offline_access ag1 ag2 ag3";
+
+let _jdTokens = null;
+let _jdMachines = [];
+let _jdPollTimer = null;
+let _jdMap = null;
+let _jdMarkers = {};
+
+// ── OAuth State für Callback ──
+function jdLogin() {
+  const state = Math.random().toString(36).slice(2);
+  sessionStorage.setItem('jd_oauth_state', state);
+  const params = new URLSearchParams({
+    client_id: JD_CLIENT_ID,
+    response_type: 'code',
+    redirect_uri: JD_REDIRECT_URI,
+    scope: JD_SCOPES,
+    state
+  });
+  sessionStorage.setItem('jd_return_tab', adminTab || 'jdlink');
+  window.location.href = JD_AUTH_URL + '?' + params.toString();
+}
+
+async function jdExchangeCode(code) {
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: JD_REDIRECT_URI,
+    client_id: JD_CLIENT_ID,
+    client_secret: JD_CLIENT_SECRET
+  });
+  const res = await fetch(JD_TOKEN_URL, {
+    method: 'POST',
+    headers: {'Content-Type':'application/x-www-form-urlencoded'},
+    body
+  });
+  if(!res.ok) throw new Error('Token-Austausch fehlgeschlagen: ' + res.status);
+  const tokens = await res.json();
+  _jdTokens = tokens;
+  // In Supabase speichern
+  await sb.from('jd_tokens').upsert({
+    user_id: state.currentUser.id,
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+  }, {onConflict:'user_id'}).catch(()=>{});
+  return tokens;
+}
+
+async function jdRefreshToken() {
+  if(!_jdTokens?.refresh_token) return null;
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: _jdTokens.refresh_token,
+    client_id: JD_CLIENT_ID,
+    client_secret: JD_CLIENT_SECRET
+  });
+  const res = await fetch(JD_TOKEN_URL, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
+  if(!res.ok) { _jdTokens = null; return null; }
+  const tokens = await res.json();
+  _jdTokens = {..._jdTokens, ...tokens};
+  await sb.from('jd_tokens').upsert({
+    user_id: state.currentUser.id,
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token || _jdTokens.refresh_token,
+    expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+  }, {onConflict:'user_id'}).catch(()=>{});
+  return tokens;
+}
+
+async function jdFetch(url, retry=true) {
+  if(!_jdTokens) return null;
+  const expiresAt = _jdTokens.expires_at ? new Date(_jdTokens.expires_at) : null;
+  if(expiresAt && expiresAt < new Date(Date.now() + 60000)) {
+    await jdRefreshToken();
+  }
+  const res = await fetch(url.startsWith('http') ? url : JD_API_BASE + url, {
+    headers: {
+      'Authorization': 'Bearer ' + _jdTokens.access_token,
+      'Accept': 'application/vnd.deere.axiom.v3+json'
+    }
+  });
+  if(res.status === 401 && retry) {
+    await jdRefreshToken();
+    return jdFetch(url, false);
+  }
+  if(!res.ok) return null;
+  return res.json();
+}
+
+async function jdLoadTokensFromDB() {
+  try {
+    const {data} = await sb.from('jd_tokens').select('*').eq('user_id', state.currentUser.id).single();
+    if(data) {
+      _jdTokens = {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_at: data.expires_at
+      };
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+async function jdLoadMachines() {
+  // 1. Organisations holen
+  const orgsData = await jdFetch('/organizations');
+  if(!orgsData) return [];
+  const orgs = orgsData.values || [];
+  const machines = [];
+  for(const org of orgs) {
+    const orgId = org.id;
+    // 2. Machines der Organisation
+    const machData = await jdFetch(`/organizations/${orgId}/machines`);
+    if(!machData) continue;
+    const mList = machData.values || [];
+    for(const m of mList) {
+      const type = (m.category||'').toLowerCase();
+      if(type.includes('tractor') || type.includes('combine') || type.includes('harvester')) {
+        machines.push({
+          id: m.id,
+          name: m.name || m.visualId || 'Unbekannt',
+          type: type.includes('combine')||type.includes('harvester') ? 'combine' : 'tractor',
+          orgId,
+          serialNumber: m.serialNumber || '',
+          model: m.modelYear ? m.modelYear + ' ' + (m.model||'') : (m.model||''),
+        });
+      }
+    }
+  }
+  _jdMachines = machines;
+  return machines;
+}
+
+async function jdGetMachineLocation(machine) {
+  const data = await jdFetch(`/organizations/${machine.orgId}/machines/${machine.id}/locations`);
+  if(!data || !data.values || !data.values[0]) return null;
+  const loc = data.values[0];
+  const point = loc.geometry;
+  if(!point || !point.coordinates) return null;
+  return {
+    lat: point.coordinates[1],
+    lon: point.coordinates[0],
+    speed: loc.measurement?.find(m=>m.type==='Machine Speed')?.value || null,
+    fuel: loc.measurement?.find(m=>m.type==='Fuel Used Accumulation')?.value || null,
+    engineHours: loc.measurement?.find(m=>m.type==='Engine Hours')?.value || null,
+    timestamp: loc.timestamp
+  };
+}
+
+async function jdPollLocations() {
+  if(!_jdTokens || !_jdMap) return;
+  for(const machine of _jdMachines) {
+    const loc = await jdGetMachineLocation(machine);
+    if(!loc) continue;
+    const icon = L.divIcon({
+      className: '',
+      html: machine.type === 'combine'
+        ? '<div style="font-size:28px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))">🌾</div>'
+        : '<div style="font-size:28px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))">🚜</div>',
+      iconSize: [32,32], iconAnchor: [16,16]
+    });
+    const popup = `<div style="font-family:var(--mono);min-width:180px">
+      <div style="font-weight:700;font-size:13px">${machine.name}</div>
+      <div style="color:#9ca3af;font-size:11px;margin:2px 0 8px">${machine.model}</div>
+      ${loc.speed!=null?`<div style="font-size:12px">⚡ ${loc.speed} km/h</div>`:''}
+      ${loc.engineHours!=null?`<div style="font-size:12px">⏱ ${parseFloat(loc.engineHours).toFixed(0)} Mh</div>`:''}
+      ${loc.fuel!=null?`<div style="font-size:12px">⛽ ${parseFloat(loc.fuel).toFixed(0)} L</div>`:''}
+      <div style="font-size:10px;color:#6b7280;margin-top:6px">${new Date(loc.timestamp).toLocaleTimeString('de-DE')}</div>
+    </div>`;
+    if(_jdMarkers[machine.id]) {
+      _jdMarkers[machine.id].setLatLng([loc.lat, loc.lon]);
+      _jdMarkers[machine.id].setPopupContent(popup);
+    } else {
+      const marker = L.marker([loc.lat, loc.lon], {icon, zIndexOffset:2000});
+      marker.bindPopup(popup, {className:'driver-popup', maxWidth:220});
+      marker.addTo(_jdMap);
+      _jdMarkers[machine.id] = marker;
+    }
+  }
+  // Update machine list
+  const listEl = document.getElementById('jd-machine-list');
+  if(listEl) renderJDMachineList();
+}
+
+function renderJDMachineList() {
+  const el = document.getElementById('jd-machine-list');
+  if(!el) return;
+  if(!_jdMachines.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px">Keine Schlepper/Drescher gefunden</div>';
+    return;
+  }
+  el.innerHTML = _jdMachines.map(m => {
+    return '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">'
+      +'<span style="font-size:22px">'+(m.type==='combine'?'🌾':'🚜')+'</span>'
+      +'<div><div style="font-size:13px;font-weight:600;color:var(--text)">'+m.name+'</div>'
+      +'<div style="font-size:11px;color:var(--text3)">'+m.model+'</div></div>'
+      +'</div>';
+  }).join('');
+}
+
+async function renderJDLink() {
+  const admintab = document.getElementById('admintab');
+  admintab.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3)">Lade JD Telemetrie…</div>';
+
+  // Callback-Code verarbeiten (aus sessionStorage nach Redirect)
+  const pendingCode = sessionStorage.getItem('jd_pending_code');
+  const pendingState = sessionStorage.getItem('jd_pending_state');
+  if(pendingCode && pendingState === sessionStorage.getItem('jd_oauth_state')) {
+    sessionStorage.removeItem('jd_pending_code');
+    sessionStorage.removeItem('jd_pending_state');
+    sessionStorage.removeItem('jd_oauth_state');
+    try {
+      await jdExchangeCode(pendingCode);
+      showToast('✓ John Deere verbunden!');
+      adminTab = 'jdlink';
+    } catch(e) {
+      showToast('⚠ JD Login fehlgeschlagen: '+e.message, 'error');
+    }
+  }
+
+  // Tokens aus DB laden falls noch nicht geladen
+  if(!_jdTokens) await jdLoadTokensFromDB();
+
+  if(!_jdTokens) {
+    // Nicht eingeloggt
+    admintab.innerHTML = `
+      <div style="max-width:480px;margin:0 auto;padding:32px 0">
+        <div class="card" style="text-align:center;padding:32px">
+          <div style="font-size:48px;margin-bottom:16px">🚜</div>
+          <div style="font-family:var(--serif);font-size:22px;color:var(--gold2);margin-bottom:8px">John Deere Telemetrie</div>
+          <div style="font-size:13px;color:var(--text3);margin-bottom:24px;line-height:1.6">
+            Verbinde deinen John Deere Operations Center Account um<br>
+            Schlepper und Mähdrescher live auf der Karte zu sehen.
+          </div>
+          <button class="btn btn-primary" style="font-size:15px;padding:12px 28px" onclick="jdLogin()">
+            Mit John Deere verbinden
+          </button>
+          <div style="font-size:11px;color:var(--text3);margin-top:16px">
+            Du wirst zu John Deere weitergeleitet und kehrst danach automatisch zurück.
+          </div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Eingeloggt – Maschinen laden
+  if(!_jdMachines.length) await jdLoadMachines();
+
+  admintab.innerHTML = `
+    <div style="display:flex;height:calc(100vh - 140px);overflow:hidden">
+      <div style="width:260px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">🚜 Maschinenpark</div>
+            <div style="font-size:11px;color:var(--text3)">${_jdMachines.length} Fahrzeuge · live</div>
+          </div>
+          <button class="btn btn-sm btn-outline" onclick="_jdTokens=null;sb.from('jd_tokens').delete().eq('user_id',state.currentUser.id);renderJDLink()" style="font-size:11px">Abmelden</button>
+        </div>
+        <div id="jd-machine-list" style="flex:1;overflow-y:auto"></div>
+        <div style="padding:10px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text3)">
+          <span class="live-dot"></span> Aktualisiert alle 30s
+        </div>
+      </div>
+      <div style="flex:1;position:relative">
+        <div id="jd-map-container" style="width:100%;height:100%"></div>
+      </div>
+    </div>`;
+
+  renderJDMachineList();
+  setTimeout(initJDMap, 50);
+}
+
+function initJDMap() {
+  if(_jdMap) { _jdMap.remove(); _jdMap = null; _jdMarkers = {}; }
+  const container = document.getElementById('jd-map-container');
+  if(!container) return;
+  const map = L.map('jd-map-container', {center:[51.495,11.673], zoom:11});
+  _jdMap = map;
+  const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri',maxZoom:19});
+  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:19});
+  sat.addTo(map);
+  L.control.layers({'Satellit':sat,'OSM':osm},{},{position:'topleft'}).addTo(map);
+  // Schlaggrenzen als Hintergrund
+  const shapes = state.shapes.length ? state.shapes : GEO_DATA;
+  shapes.forEach(entry => {
+    const feld = state.felder.find(x=>x.id===entry.feldId);
+    if(!feld) return;
+    L.polygon([entry.outer,...(entry.holes||[])], {...schlagColor(feld.status), interactive:false, opacity:0.5, fillOpacity:0.15}).addTo(map);
+  });
+  // Erste Positionsabfrage
+  jdPollLocations();
+  // Poll alle 30s
+  if(_jdPollTimer) clearInterval(_jdPollTimer);
+  _jdPollTimer = setInterval(jdPollLocations, 30000);
+}
+
+// Cleanup bei Tab-Wechsel
+
+// ─── ONBOARDING ───
+const OB_STEPS = {
+  drescher: [
+    {
+      icon: '👋',
+      title: 'Willkommen, Drescherfahrer!',
+      subtitle: 'Diese kurze Einführung zeigt dir alles was du für die Ernte brauchst.',
+      steps: []
+    },
+    {
+      icon: '🌾',
+      title: 'Fuhre zuweisen',
+      subtitle: 'So startest du eine neue Fuhre:',
+      steps: [
+        { icon:'📍', title:'Schlag wählen', desc:'Wähle den aktuellen Schlag aus der Dropdown-Liste. Nur aktive Schläge werden angezeigt.' },
+        { icon:'🚛', title:'Abfahrer wählen', desc:'Wähle einen freien Abfahrer. Bereits belegte Abfahrer sind ausgegraut.' },
+        { icon:'▶', title:'Fuhre starten', desc:'Klick auf „Fuhre starten" – der Abfahrer sieht die Fuhre sofort auf seinem Handy.' },
+      ]
+    },
+    {
+      icon: '📋',
+      title: 'Meine Fuhren',
+      subtitle: 'Im Tab „Fuhren" siehst du alle deine Fuhren.',
+      steps: [
+        { icon:'🟡', title:'Offen', desc:'Die Fuhre ist unterwegs – der Abfahrer wiegt noch.' },
+        { icon:'✓', title:'Fertig', desc:'Abfahrer hat gewogen und abgeschlossen. Du kannst eine neue Fuhre zuweisen.' },
+        { icon:'🧭', title:'Navigation', desc:'Im Tab „Schlag" findest du alle aktiven Schläge auf einer Karte – tippe auf 🧭 Los für die Navigation.' },
+      ]
+    },
+    {
+      icon: '✅',
+      title: 'Alles klar!',
+      subtitle: 'Du bist bereit für die Ernte. Bei Fragen wende dich an den Betriebsleiter.',
+      steps: []
+    }
+  ],
+  abfahrer: [
+    {
+      icon: '👋',
+      title: 'Willkommen, Abfahrer!',
+      subtitle: 'Diese kurze Einführung zeigt dir alles was du für die Ernte brauchst.',
+      steps: []
+    },
+    {
+      icon: '📬',
+      title: 'Neue Fuhre',
+      subtitle: 'Wenn der Drescher eine Fuhre für dich anlegt:',
+      steps: [
+        { icon:'🔔', title:'Benachrichtigung', desc:'Du siehst sofort „Neue Fuhre zugewiesen!" oben auf dem Bildschirm.' },
+        { icon:'📋', title:'Tab „Offen"', desc:'Die Fuhre erscheint im Tab Offen mit Schlag, Fruchtart und Fuhren-Nummer.' },
+        { icon:'🧭', title:'Navigation', desc:'Tippe auf „Zum Schlag navigieren" um direkt zu Google Maps / Apple Maps zu gelangen.' },
+      ]
+    },
+    {
+      icon: '⚖️',
+      title: 'Wiegung eintragen',
+      subtitle: 'Nach dem Abladen auf der Waage:',
+      steps: [
+        { icon:'🔢', title:'Vollgewicht', desc:'Trag das Vollgewicht ein. Die App zeigt den 1.000er-Punkt automatisch an.' },
+        { icon:'🔢', title:'Leergewicht', desc:'Dann das Leergewicht – das Netto wird sofort berechnet und angezeigt.' },
+        { icon:'💧', title:'Qualität', desc:'Je nach Fruchtart: Feuchte, Protein, Gluten oder Ölgehalt eintragen. Alles optional, aber wichtig für den Betrieb.' },
+      ]
+    },
+    {
+      icon: '✅',
+      title: 'Fuhre abschließen',
+      subtitle: 'Letzte Schritte:',
+      steps: [
+        { icon:'✓', title:'Abschließen', desc:'Klick auf „Fuhre abschließen". Fehlende Qualitätsangaben werden nochmal abgefragt.' },
+        { icon:'📂', title:'Erledigt', desc:'Die Fuhre wandert in den Tab „Erledigt" – der Drescher kann sofort die nächste anlegen.' },
+        { icon:'🔋', title:'Bildschirm anlassen', desc:'Lass den Bildschirm an! Die App hält ihn automatisch wach, damit dein GPS-Standort übertragen wird.' },
+      ]
+    },
+    {
+      icon: '🎉',
+      title: 'Alles klar!',
+      subtitle: 'Du bist bereit für die Ernte. Gute Fahrt!',
+      steps: []
+    }
+  ]
+};
+
+let _obStep = 0;
+let _obRole = null;
+
+function showOnboarding(role) {
+  _obRole = role;
+  _obStep = 0;
+  renderOnboardingStep();
+}
+
+function renderOnboardingStep() {
+  const steps = OB_STEPS[_obRole];
+  if(!steps) return;
+  const step = steps[_obStep];
+  const total = steps.length;
+  const pct = ((_obStep + 1) / total * 100).toFixed(0);
+  const isLast = _obStep === total - 1;
+  const isFirst = _obStep === 0;
+
+  const stepsHtml = step.steps.map((s, i) =>
+    `<div class="ob-step" style="animation-delay:${i * 0.08}s">
+      <div class="ob-step-icon">${s.icon}</div>
+      <div class="ob-step-text">
+        <div class="ob-step-title">${s.title}</div>
+        <div class="ob-step-desc">${s.desc}</div>
+      </div>
+    </div>`
+  ).join('');
+
+  const dotsHtml = steps.map((_, i) =>
+    `<div class="ob-dot ${i === _obStep ? 'active' : ''}"></div>`
+  ).join('');
+
+  // Remove existing overlay
+  document.getElementById('onboarding-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'onboarding-overlay';
+  overlay.innerHTML = `
+    <div id="onboarding-card">
+      <div class="ob-progress">
+        <div class="ob-progress-bar" style="width:${pct}%"></div>
+      </div>
+      <div class="ob-header">
+        <span class="ob-icon">${step.icon}</span>
+        <div class="ob-title">${step.title}</div>
+        <div class="ob-subtitle">${step.subtitle}</div>
+      </div>
+      <div class="ob-body">${stepsHtml}</div>
+      <div class="ob-footer">
+        <div class="ob-dots">${dotsHtml}</div>
+        <div style="display:flex;gap:8px">
+          ${!isFirst ? `<button class="btn btn-outline btn-sm" onclick="obPrev()">← Zurück</button>` : ''}
+          ${!isLast
+            ? `<button class="btn btn-primary btn-sm" onclick="obNext()">Weiter →</button>`
+            : `<button class="btn btn-sm" style="background:var(--green);color:#0a1f0a;border:none;font-weight:700" onclick="closeOnboarding()">Los geht's! 🌾</button>`
+          }
+        </div>
+      </div>
+      <div style="text-align:center;padding-bottom:14px">
+        <button onclick="closeOnboarding()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">Überspringen</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function obNext() {
+  const steps = OB_STEPS[_obRole];
+  if(_obStep < steps.length - 1) { _obStep++; renderOnboardingStep(); }
+}
+function obPrev() {
+  if(_obStep > 0) { _obStep--; renderOnboardingStep(); }
+}
+function closeOnboarding() {
+  const overlay = document.getElementById('onboarding-overlay');
+  if(overlay) {
+    overlay.style.animation = 'ob-fade-in 0.2s ease reverse forwards';
+    setTimeout(() => overlay.remove(), 200);
+  }
+  // Mark as seen
+  localStorage.setItem('ob_seen_' + _obRole, '1');
+}
+
+function checkShowOnboarding(role) {
+  if(role === 'drescher' || role === 'abfahrer') {
+    if(!localStorage.getItem('ob_seen_' + role)) {
+      setTimeout(() => showOnboarding(role), 800);
+    }
+  }
+}
+
 // ─── NEUES ERNTEJAHR ───
 let _erntejahrStep = 0; // 0=warn, 1=csv-done, 2=ready
 
@@ -3658,6 +4274,19 @@ function initSupabase() {
     setTimeout(initSupabase, 50);
   }
 }
+// Handle JD OAuth callback immediately on page load
+(async () => {
+  const up = new URLSearchParams(window.location.search);
+  const code = up.get('code');
+  const st = up.get('state');
+  if(code && st && st === sessionStorage.getItem('jd_oauth_state')) {
+    // Store code for processing after app boots
+    sessionStorage.setItem('jd_pending_code', code);
+    sessionStorage.setItem('jd_pending_state', st);
+    // Clean URL immediately
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+})();
 initSupabase();
 
 if('serviceWorker' in navigator) {
