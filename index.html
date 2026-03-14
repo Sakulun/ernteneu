@@ -511,12 +511,26 @@ const db = {
 
   // Realtime subscriptions
   subscribeAll(onChange) {
-    sb.channel('ernte-changes')
+    const channelId = 'ernte-changes-' + Math.random().toString(36).slice(2,8);
+    const channel = sb.channel(channelId)
       .on('postgres_changes', {event:'*', schema:'public', table:'fuhren'}, onChange)
       .on('postgres_changes', {event:'*', schema:'public', table:'felder'}, onChange)
       .on('postgres_changes', {event:'*', schema:'public', table:'gps_positionen'}, onChange)
       .on('postgres_changes', {event:'*', schema:'public', table:'silos'}, onChange)
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log('Realtime status:', status, err||'');
+        const dot = document.getElementById('topbar-sync');
+        if(status === 'SUBSCRIBED') {
+          if(dot) { dot.style.background='#22c55e'; dot.title='Echtzeit aktiv'; }
+        } else if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          if(dot) { dot.style.background='#ef4444'; dot.title='Echtzeit-Fehler – neu laden'; }
+          // Auto-reconnect after 3s
+          setTimeout(() => sb.removeChannel(channel).then(() => this.subscribeAll(onChange)), 3000);
+        } else {
+          if(dot) { dot.style.background='#f59e0b'; dot.title='Verbinde…'; }
+        }
+      });
+    return channel;
   }
 };
 
