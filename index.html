@@ -495,7 +495,7 @@ body { padding-bottom: env(safe-area-inset-bottom); }
       <span class="topbar-logo">Ernte 2026</span>
       <span class="topbar-user"><span class="dot" id="topbar-dot"></span><span id="topbar-name"></span><span id="topbar-sync" style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:none;margin-left:8px;flex-shrink:0;vertical-align:middle"></span></span>
     </div>
-    <div style="display:flex;gap:8px;align-items:center"><button id="topbar-menu-btn" onclick="toggleSidebar()">☰</button><button class="logout-btn" onclick="logout()">Abmelden</button></div>
+    <div style="display:flex;gap:8px;align-items:center"><button id="topbar-menu-btn" onclick="toggleSidebar()">☰</button><button id="topbar-nachricht-btn" onclick="showNachrichtenDialog()" style="display:none;background:none;border:1px solid var(--border);color:var(--text3);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--mono)">📢</button><button id="topbar-hilfe-btn" onclick="showOnboarding(state.currentUser?.role)" style="display:none;background:none;border:1px solid var(--border);color:var(--text3);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--mono)">? Hilfe</button><button class="logout-btn" onclick="logout()">Abmelden</button></div>
   </div>
   <div class="content" id="main-content"></div>
 </div>
@@ -1054,6 +1054,11 @@ function loginUser(user) {
   if(user.role !== "admin") shareUserGPS(user.id);
   initNachrichtenListener();
   if(user.role !== 'admin') requestBrowserNotification();
+  // Topbar-Buttons je Rolle
+  const nb = document.getElementById('topbar-nachricht-btn');
+  const hb = document.getElementById('topbar-hilfe-btn');
+  if(nb) nb.style.display = user.role === 'admin' ? 'block' : 'none';
+  if(hb) hb.style.display = (user.role === 'drescher' || user.role === 'abfahrer') ? 'block' : 'none';
   checkShowOnboarding(user.role);
   // Auto-collapse sidebar on tablet
   if(user.role === 'admin' && window.innerWidth <= 1024 && window.innerWidth > 640) {
