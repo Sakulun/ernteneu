@@ -49,7 +49,7 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);min-height:1
 .topbar-user .dot{width:6px;height:6px;border-radius:50%}
 .logout-btn{background:none;border:1px solid var(--border);color:var(--text3);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--mono);transition:all .15s}
 .logout-btn:hover{border-color:var(--red);color:var(--red)}
-.content{flex:1;padding:16px;max-width:680px;margin:0 auto;width:100%}
+.content{flex:1;padding:16px;width:100%}
 /* TABS */
 .tabs{display:flex;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:4px;margin-bottom:20px}
 .tab{flex:1;padding:8px 4px;background:none;border:none;color:var(--text3);cursor:pointer;border-radius:7px;font-size:12px;font-family:var(--mono);transition:all .15s}
@@ -193,8 +193,8 @@ select option:disabled{color:var(--text3)}
 }
 #admin-main-inner {
   padding: 16px;
-  max-width: 720px;
-  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 /* Sidebar collapsed: show only icons */
 #admin-sidebar.collapsed .sidebar-btn { padding: 10px 14px; justify-content: center; border-left: none; border-bottom: 1px solid var(--border); }
@@ -253,7 +253,7 @@ select option:disabled{color:var(--text3)}
   color: var(--text3); padding: 5px 9px; border-radius: 6px; cursor: pointer;
   font-size: 16px; font-family: var(--mono); line-height: 1;
 }
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
   #topbar-menu-btn { display: block; }
   .content { padding: 12px 10px; }
   #admin-main-inner { padding: 12px 10px; }
@@ -263,6 +263,78 @@ select option:disabled{color:var(--text3)}
 .verify-form { border: 1px solid var(--blue); border-radius: var(--radius); padding: 14px; margin-top: 8px; background: var(--bg3); }
 .verify-form .form-group { margin-bottom: 10px; }
 .verify-form label { font-size: 11px; color: var(--text3); }
+
+/* ═══════════════════════════════════════
+   RESPONSIVE LAYOUT
+   ═══════════════════════════════════════ */
+
+/* ── Tablet (640–1024px): collapsed sidebar ── */
+@media (min-width: 641px) and (max-width: 1024px) {
+  #admin-sidebar { width: 52px !important; }
+  #admin-sidebar .sidebar-label { display: none; }
+  #admin-sidebar .sidebar-section { display: none; }
+  #admin-sidebar .sidebar-btn { padding: 10px 14px; justify-content: center; border-left: none; border-bottom: 1px solid var(--border); }
+  #admin-main-inner { padding: 12px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .card { padding: 12px; }
+}
+
+/* ── Desktop (>1024px): full sidebar, generous spacing ── */
+@media (min-width: 1025px) {
+  #admin-main-inner { padding: 24px 28px; }
+  .stats-grid { grid-template-columns: repeat(4, 1fr); }
+  .card { padding: 18px 20px; }
+  .form-group label { font-size: 12px; }
+  .form-group input, .form-group select { font-size: 14px; padding: 9px 12px; }
+}
+
+/* ── Wide (>1440px): 2-col dashboard layout ── */
+@media (min-width: 1440px) {
+  #admin-main-inner { padding: 28px 36px; }
+  .stats-grid { grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .stat-val { font-size: 32px !important; }
+}
+
+/* ── Mobile (<640px): optimized for touch ── */
+@media (max-width: 640px) {
+  .content { padding: 10px 12px; }
+  #admin-main-inner { padding: 10px 12px; }
+  .card { padding: 12px; margin-bottom: 10px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .stat-val { font-size: 22px !important; }
+  .stat-label { font-size: 10px; }
+  .tab { font-size: 11px; padding: 9px 4px; }
+  /* Larger touch targets */
+  .btn { padding: 10px 14px; min-height: 40px; }
+  .btn-sm { padding: 8px 12px; min-height: 36px; font-size: 12px; }
+  .sidebar-btn { padding: 14px 16px !important; }
+  /* Forms more spacious */
+  .form-group { margin-bottom: 14px; }
+  .form-group input, .form-group select { font-size: 16px !important; padding: 10px 12px; } /* 16px prevents iOS zoom */
+  /* Drescher split: stack vertically */
+  #drescher-layout { flex-direction: column; height: auto; }
+  #drescher-panel { width: 100%; border-right: none; border-bottom: 1px solid var(--border); max-height: 60vh; overflow-y: auto; }
+  #drescher-map-panel { height: 40vh; }
+  /* Fortschritt grid */
+  .fortschritt-grid { grid-template-columns: 1fr !important; }
+  /* Topbar compact */
+  .topbar-logo { font-size: 16px; }
+  .topbar-user { font-size: 10px; }
+}
+
+/* ── Touch hover states ── */
+@media (hover: none) {
+  .btn:hover { background: inherit; color: inherit; border-color: inherit; }
+  .sidebar-btn:hover { background: none; color: var(--text2); }
+  .user-btn:hover { border-color: var(--border); background: var(--bg2); }
+}
+
+/* ── Prevent text scaling on iOS ── */
+html { -webkit-text-size-adjust: 100%; }
+
+/* ── Safe area for notched phones ── */
+.topbar { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+body { padding-bottom: env(safe-area-inset-bottom); }
 </style>
 </head>
 <body>
@@ -396,6 +468,21 @@ const db = {
     const { error } = await sb.from('fuhren').update(map).eq('id', id);
     if(error) throw error;
   },
+  async getShapes() {
+    const { data, error } = await sb.from('shapes').select('*');
+    if(error) throw error;
+    return data || [];
+  },
+  async upsertShape(feldId, betrieb, outer, holes) {
+    const { error } = await sb.from('shapes').upsert({
+      feld_id: feldId, betrieb, outer_coords: outer, holes: holes||[]
+    }, {onConflict:'feld_id'});
+    if(error) throw error;
+  },
+  async deleteShape(feldId) {
+    const { error } = await sb.from('shapes').delete().eq('feld_id', feldId);
+    if(error) throw error;
+  },
   async getSilos() {
     const { data, error } = await sb.from('silos').select('*').order('id');
     if(error) throw error;
@@ -455,6 +542,26 @@ async function bootApp() {
 
     showLoader('Lade Silos…');
     state.silos = await db.getSilos().catch(e => { console.warn('getSilos:', e); return []; });
+
+    showLoader('Lade Shapes…');
+    try {
+      const dbShapes = await db.getShapes();
+      if(dbShapes.length > 0) {
+        // Replace hardcoded GEO_DATA with DB shapes
+        state.shapes = dbShapes.map(s=>({
+          feldId: s.feld_id,
+          betrieb: s.betrieb||'',
+          outer: s.outer_coords,
+          holes: s.holes||[]
+        }));
+      } else {
+        // Fallback: use hardcoded GEO_DATA
+        state.shapes = GEO_DATA;
+      }
+    } catch(e) {
+      console.warn('Shapes aus DB nicht geladen, nutze hardcoded:', e);
+      state.shapes = GEO_DATA;
+    }
 
     const nrs = state.fuhren.map(f=>parseInt((f.nr||'').replace('F-',''))).filter(n=>!isNaN(n));
     state.nextNr = nrs.length ? Math.max(...nrs)+1 : 1;
@@ -692,6 +799,7 @@ const state = {
   ],
   fuhren: [],
   silos: [],
+  shapes: [],
   nextId: 1, nextNr: 1, lastFeldId: null,
 };
 
@@ -721,7 +829,13 @@ function renderLogin() {
     btn.onmouseleave = () => btn.style.borderColor = 'var(--border)';
     const dc = u.role==='drescher'?'var(--amber)':u.role==='abfahrer'?'var(--blue)':'var(--gold)';
     btn.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:${dc};flex-shrink:0;display:inline-block"></span>${u.name}`;
-    btn.dataset.plainpw = u._plainpw || '';
+    // Demo-Passwörter für Login-Buttons (nur lokale Hilfe, nicht sicherheitsrelevant)
+    const demoPW = {
+      'Hans Müller':'drescher1','Karl Bauer':'drescher2',
+      'Peter Schmidt':'abfahrer1','Thomas Wagner':'abfahrer2','Fritz Lange':'abfahrer3',
+      'Betriebsleiter':'admin123','Silomeister':'silo123'
+    };
+    btn.dataset.plainpw = u._plainpw || demoPW[u.name] || '';
     btn.onclick = () => {
       document.getElementById('login-name').value = u.name;
       document.getElementById('login-pw').value = btn.dataset.plainpw;
@@ -758,6 +872,10 @@ function loginUser(user) {
   document.getElementById('topbar-sync').style.display = 'inline-block';
   renderMain();
   if(user.role !== "admin") shareUserGPS(user.id);
+  // Auto-collapse sidebar on tablet
+  if(user.role === 'admin' && window.innerWidth <= 1024 && window.innerWidth > 640) {
+    sidebarCollapsed = true;
+  }
 }
 function logout() {
   hideSiloOverlay();
@@ -1158,8 +1276,11 @@ function renderAdminSchlaege() {
         <div class="stat-box"><div class="stat-val" style="font-size:22px;color:var(--green)" id="s-abg"></div><div class="stat-label">Abgeerntet</div></div>
         <div class="stat-box"><div class="stat-val" style="font-size:22px;color:var(--text3)" id="s-inaktiv"></div><div class="stat-label">Inaktiv</div></div>
       </div>
-      <input type="text" id="schlag-search-input" class="search-input" placeholder="Suche nach Schlag oder Fruchtart…"
-        oninput="schlagSearchInput(this.value)">
+      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+        <input type="text" id="schlag-search-input" class="search-input" style="flex:1;margin-bottom:0" placeholder="Suche nach Schlag oder Fruchtart…"
+          oninput="schlagSearchInput(this.value)">
+        <button class="btn btn-sm btn-outline" onclick="showImportDialog()" title="Excel oder KML importieren">📥 Import</button>
+      </div>
       <div id="schlag-filter-bar" class="filter-bar"></div>
       <div id="schlag-liste"></div>`;
   }
@@ -1236,30 +1357,57 @@ async function schlagSetStatus(feldId, newStatus) {
 }
 
 function renderAdminDash() {
-  const fertig=state.fuhren.filter(f=>f.status==='fertig');
-  const offen=state.fuhren.filter(f=>f.status==='offen');
-  const totalNet=fertig.reduce((s,f)=>s+(netto(f)||0),0);
-  const feuchteArr=fertig.filter(f=>f.feuchte);
-  const protArr=fertig.filter(f=>f.protein);
-  const avgF=feuchteArr.length?feuchteArr.reduce((s,f)=>s+f.feuchte,0)/feuchteArr.length:null;
-  const avgP=protArr.length?protArr.reduce((s,f)=>s+f.protein,0)/protArr.length:null;
+  const fertig = state.fuhren.filter(f=>f.status==='fertig');
+  const offen  = state.fuhren.filter(f=>f.status==='offen');
+  const totalNet = fertig.reduce((s,f)=>s+(netto(f)||0), 0);
+  const gesamtHa = state.felder.reduce((s,f)=>s+f.flaeche, 0);
+  const abgHa    = state.felder.filter(f=>f.status==='abgeerntet').reduce((s,f)=>s+f.flaeche, 0);
 
-  const byFeld={},byFruchtart={};
-  fertig.forEach(f=>{
-    byFeld[f.feldId]=(byFeld[f.feldId]||0)+(netto(f)||0);
-    const fa=f.fruchtart||'Unbekannt';
-    byFruchtart[fa]=(byFruchtart[fa]||0)+(netto(f)||0);
+  // ── Erntefortschritt je Kultur ──
+  const kulturen = {};
+  state.felder.forEach(f => {
+    if(!kulturen[f.fruchtart]) kulturen[f.fruchtart] = {ha_gesamt:0, ha_abg:0, ha_aktiv:0, kg:0, fuhren:0};
+    const k = kulturen[f.fruchtart];
+    k.ha_gesamt += f.flaeche;
+    if(f.status==='abgeerntet') k.ha_abg += f.flaeche;
+    if(f.status==='aktiv')      k.ha_aktiv += f.flaeche;
   });
-  const maxFeld=Math.max(...Object.values(byFeld),1);
-  const maxFa=Math.max(...Object.values(byFruchtart),1);
+  fertig.forEach(f => {
+    const fa = f.fruchtart||'Unbekannt';
+    if(!kulturen[fa]) kulturen[fa] = {ha_gesamt:0, ha_abg:0, ha_aktiv:0, kg:0, fuhren:0};
+    kulturen[fa].kg += (netto(f)||0);
+    kulturen[fa].fuhren++;
+  });
 
-  const feldBars=Object.entries(byFeld).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([id,kg])=>
-    `<div class="bar-row"><div class="bar-label">${getFeld(+id).name||'–'}</div><div class="bar-track"><div class="bar-fill" style="width:${(kg/maxFeld*100).toFixed(0)}%"></div></div><div class="bar-val">${kg2t(kg)}</div></div>`
-  ).join('')||'<div style="color:var(--text3);font-size:12px">Noch keine Daten</div>';
+  const sorted = Object.entries(kulturen).sort((a,b)=>b[1].ha_gesamt-a[1].ha_gesamt);
 
-  const faBars=Object.entries(byFruchtart).sort((a,b)=>b[1]-a[1]).map(([fa,kg])=>
-    `<div class="bar-row"><div class="bar-label">${fa}</div><div class="bar-track"><div class="bar-fill" style="width:${(kg/maxFa*100).toFixed(0)}%;background:var(--blue)"></div></div><div class="bar-val">${kg2t(kg)}</div></div>`
-  ).join('')||'<div style="color:var(--text3);font-size:12px">Noch keine Daten</div>';
+  const kulturRows = sorted.map(([fa, k]) => {
+    const ha_offen = Math.max(0, k.ha_gesamt - k.ha_abg - k.ha_aktiv);
+    const pct_abg  = k.ha_gesamt > 0 ? (k.ha_abg / k.ha_gesamt * 100) : 0;
+    const pct_aktiv= k.ha_gesamt > 0 ? (k.ha_aktiv / k.ha_gesamt * 100) : 0;
+    const tStr     = k.kg > 0 ? (k.kg/1000).toFixed(1)+' t' : '–';
+    const dtHa     = k.ha_abg > 0 ? (k.kg/100/k.ha_abg).toFixed(1)+' dt/ha' : '–';
+    const farbe    = getFruchtFarbe(fa);
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="width:10px;height:10px;border-radius:50%;background:${farbe.dot};flex-shrink:0;display:inline-block"></span>
+          <span style="font-size:13px;font-weight:600;color:var(--text)">${fa}</span>
+        </div>
+        <span style="font-size:12px;color:var(--text3)">${k.ha_gesamt.toFixed(1)} ha gesamt</span>
+      </div>
+      <div style="background:var(--bg3);border-radius:4px;height:10px;overflow:hidden;display:flex;margin-bottom:5px">
+        <div style="width:${pct_abg.toFixed(1)}%;background:var(--green);height:100%;transition:width .3s"></div>
+        <div style="width:${pct_aktiv.toFixed(1)}%;background:var(--gold);height:100%"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;font-size:11px">
+        <div><span style="color:var(--green)">✓ ${k.ha_abg.toFixed(1)} ha</span></div>
+        <div><span style="color:var(--gold2)">${k.ha_aktiv>0?'⚙ '+k.ha_aktiv.toFixed(1)+' ha':'–'}</span></div>
+        <div><span style="color:var(--text3)">⬜ ${ha_offen.toFixed(1)} ha</span></div>
+        <div style="text-align:right"><span style="color:var(--text2)">${tStr}</span>${k.ha_abg>0?` <span style="color:var(--text3)">· ${dtHa}</span>`:''}</div>
+      </div>
+    </div>`;
+  }).join('');
 
   const liveHtml = offen.length ? offen.map(f=>`
     <div class="fuhre-item" style="border-color:var(--amber)">
@@ -1280,14 +1428,23 @@ function renderAdminDash() {
     </div>`).join('') : '<div style="color:var(--text3);font-size:12px;padding:8px 0">Keine offenen Fuhren</div>';
 
   document.getElementById('admintab').innerHTML=`
-    <div class="stats-grid">
+    <div class="stats-grid" style="margin-bottom:16px">
       <div class="stat-box"><div class="stat-val">${(totalNet/1000).toFixed(1)}</div><div class="stat-label">Tonnen gesamt</div></div>
+      <div class="stat-box"><div class="stat-val" style="color:var(--green)">${abgHa.toFixed(0)}</div><div class="stat-label">ha abgeerntet</div></div>
+      <div class="stat-box"><div class="stat-val" style="color:var(--text3)">${(gesamtHa-abgHa).toFixed(0)}</div><div class="stat-label">ha noch offen</div></div>
       <div class="stat-box"><div class="stat-val">${fertig.length}</div><div class="stat-label">Fuhren fertig</div></div>
-      <div class="stat-box"><div class="stat-val">${avgF?avgF.toFixed(1)+'%':'–'}</div><div class="stat-label">Ø Feuchte</div></div>
-      <div class="stat-box"><div class="stat-val">${avgP?avgP.toFixed(1)+'%':'–'}</div><div class="stat-label">Ø Protein</div></div>
     </div>
-    <div class="card"><div class="section-label">Tonnen pro Schlag (Top 8)</div>${feldBars}</div>
-    <div class="card"><div class="section-label">Tonnen pro Fruchtart</div>${faBars}</div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Erntefortschritt je Kultur</div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);display:flex;gap:14px;margin-bottom:12px;flex-wrap:wrap">
+        <span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:4px"></span>Abgeerntet</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:var(--gold);border-radius:2px;margin-right:4px"></span>Aktiv</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;margin-right:4px"></span>Offen</span>
+      </div>
+      ${kulturRows || '<div style="color:var(--text3);font-size:12px">Noch keine Daten</div>'}
+    </div>
     <div class="card"><div class="card-header"><div class="card-title">Live-Status</div><button class="btn btn-sm btn-outline" onclick="renderAdmin()">&#8635; Refresh</button></div>${liveHtml}</div>`;
 }
 
@@ -2040,7 +2197,7 @@ function initDrescherMap() {
   sat.addTo(map);
   L.control.layers({'Satellit':sat,'OSM':osm},{},{position:'topleft'}).addTo(map);
 
-  GEO_DATA.forEach(entry => {
+  (state.shapes.length ? state.shapes : GEO_DATA).forEach(entry => {
     const feld = state.felder.find(x=>x.id===entry.feldId);
     if(!feld) return;
     const status = feld.status;
@@ -2478,6 +2635,196 @@ async function removeFuhreFromSilo(fId) {
 function renderSilomeister() {
   document.getElementById('main-content').innerHTML = '';
   showSiloOverlay();
+}
+
+
+// ─── STAMMDATEN IMPORT ───
+
+function showImportDialog() {
+  const modal = document.createElement('div');
+  modal.id = 'import-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;width:100%;max-width:480px;box-shadow:var(--shadow)">
+      <div style="font-family:var(--serif);font-size:20px;color:var(--gold2);margin-bottom:6px">📥 Stammdaten importieren</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:20px">Excel (Flächenübersicht) oder KML-Dateien (Schlaggrenzen)</div>
+
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">1. Excel-Datei (Schläge + Fruchtarten)</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Erwartet: Spalten BEZEICHNUNG, FLAECHE, FRUCHTART wie in der Flächenübersicht</div>
+        <label style="display:block;background:var(--bg2);border:1px dashed var(--border);border-radius:8px;padding:12px;text-align:center;cursor:pointer;font-size:12px;color:var(--text3)">
+          📊 Excel auswählen (.xlsx)
+          <input type="file" id="import-excel" accept=".xlsx,.xls" style="display:none" onchange="handleExcelImport(this)">
+        </label>
+        <div id="excel-status" style="font-size:11px;margin-top:6px;color:var(--text3)"></div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">2. KML-Dateien (Schlaggrenzen)</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Mehrere KML-Dateien gleichzeitig auswählbar (eine pro Betrieb)</div>
+        <label style="display:block;background:var(--bg2);border:1px dashed var(--border);border-radius:8px;padding:12px;text-align:center;cursor:pointer;font-size:12px;color:var(--text3)">
+          🗺 KML-Dateien auswählen
+          <input type="file" id="import-kml" accept=".kml" multiple style="display:none" onchange="handleKMLImport(this)">
+        </label>
+        <div id="kml-status" style="font-size:11px;margin-top:6px;color:var(--text3)"></div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-modal').remove()">Schließen</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function handleExcelImport(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('excel-status');
+  statusEl.textContent = 'Lese Datei…';
+  statusEl.style.color = 'var(--text3)';
+
+  try {
+    // Load SheetJS dynamically
+    if(!window.XLSX) {
+      await new Promise((res,rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array'});
+    // Try to find the right sheet (first non-empty sheet)
+    let ws = null, sheetName = '';
+    for(const name of wb.SheetNames) {
+      const s = wb.Sheets[name];
+      const range = XLSX.utils.decode_range(s['!ref']||'A1:A1');
+      if(range.e.r > 2) { ws = s; sheetName = name; break; }
+    }
+    if(!ws) throw new Error('Kein passendes Blatt gefunden');
+    const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+    statusEl.textContent = `${rows.length} Zeilen in Blatt "${sheetName}" gefunden. Verarbeite…`;
+
+    // Map columns flexibly
+    const mapped = [];
+    for(const row of rows) {
+      const keys = Object.keys(row).map(k=>k.toString().toUpperCase());
+      const get = (candidates) => {
+        for(const c of candidates) {
+          const k = Object.keys(row).find(k=>k.toString().toUpperCase().includes(c));
+          if(k && row[k]) return row[k].toString().trim();
+        }
+        return '';
+      };
+      const name = get(['BEZEICHNUNG','NAME','SCHLAG']);
+      const flaeche = parseFloat(get(['FLAECHE','FLÄCHE','AKTFLAECHE','AKTFLÄCHE']).replace(',','.'));
+      const fruchtart = get(['FRUCHTART','NUTZUNG','KULTUR','BESCHREIBUNG']);
+      const nutzcode = parseInt(get(['NUTZ_CODE','NUTZCODE','CODE'])||'0');
+      // Filter: only harvest-relevant codes
+      const ernteCode = [112,113,115,116,131,156,171,210,311,320,330,603];
+      if(name && flaeche > 0 && fruchtart && (ernteCode.includes(nutzcode)||nutzcode===0)) {
+        mapped.push({name, flaeche: Math.round(flaeche*10000)/10000, fruchtart});
+      }
+    }
+
+    if(mapped.length === 0) throw new Error('Keine ernterelevanten Schläge gefunden. Spalten BEZEICHNUNG, FLAECHE, FRUCHTART vorhanden?');
+
+    // Match existing felder by name, update or add
+    let updated = 0, added = 0, skipped = 0;
+    const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g,'');
+
+    for(const m of mapped) {
+      const existing = state.felder.find(f => norm(f.name)===norm(m.name));
+      if(existing) {
+        // Update
+        existing.flaeche = m.flaeche;
+        existing.fruchtart = m.fruchtart;
+        existing.status = 'inaktiv'; // reset for new season
+        try { await sb.from('felder').update({flaeche:m.flaeche, fruchtart:m.fruchtart, status:'inaktiv'}).eq('id',existing.id); updated++; }
+        catch(e) { skipped++; }
+      } else {
+        // Insert new
+        try {
+          const {data} = await sb.from('felder').insert({name:m.name, flaeche:m.flaeche, fruchtart:m.fruchtart, status:'inaktiv'}).select().single();
+          if(data) { state.felder.push({id:data.id, ...m, status:'inaktiv'}); added++; }
+        } catch(e) { skipped++; }
+      }
+    }
+    statusEl.style.color = 'var(--green)';
+    statusEl.textContent = `✓ ${updated} aktualisiert, ${added} neu angelegt${skipped?' ('+skipped+' Fehler)':''}`;
+    renderAdminSchlaegeListe();
+  } catch(e) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = '⚠ ' + e.message;
+  }
+}
+
+async function handleKMLImport(input) {
+  const files = Array.from(input.files);
+  if(!files.length) return;
+  const statusEl = document.getElementById('kml-status');
+  statusEl.textContent = `${files.length} KML-Dateien werden verarbeitet…`;
+  statusEl.style.color = 'var(--text3)';
+
+  const norm = s => {
+    const nfkd = s.normalize('NFKD');
+    return nfkd.replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9/]/g,'');
+  };
+  const consonants = s => norm(s).replace(/[aeiou]/g,'');
+
+  let matched = 0, skipped = 0;
+  const parser = new DOMParser();
+
+  for(const file of files) {
+    const betrieb = file.name.replace('Parzellen_','').replace('.kml','').replace(/_/g,' ');
+    const text = await file.text();
+    const doc = parser.parseFromString(text, 'text/xml');
+    const pms = doc.querySelectorAll('Placemark');
+
+    for(const pm of pms) {
+      const name = pm.querySelector('name')?.textContent?.trim()||'';
+      const coordsEl = pm.querySelector('outerBoundaryIs coordinates, outerBoundaryIs > LinearRing > coordinates');
+      if(!name || !coordsEl) continue;
+
+      const outer = coordsEl.textContent.trim().split(/\s+/).map(pt=>{
+        const p = pt.split(',');
+        return p.length>=2 ? [Math.round(parseFloat(p[1])*100000)/100000, Math.round(parseFloat(p[0])*100000)/100000] : null;
+      }).filter(Boolean);
+      if(outer.length < 3) continue;
+
+      const holes = [];
+      pm.querySelectorAll('innerBoundaryIs coordinates').forEach(el=>{
+        const h = el.textContent.trim().split(/\s+/).map(pt=>{
+          const p = pt.split(',');
+          return p.length>=2 ? [Math.round(parseFloat(p[1])*100000)/100000, Math.round(parseFloat(p[0])*100000)/100000] : null;
+        }).filter(Boolean);
+        if(h.length >= 3) holes.push(h);
+      });
+
+      // Match to existing felder
+      const ck = consonants(name);
+      const feld = state.felder.find(f => consonants(f.name)===ck) ||
+                   state.felder.find(f => norm(f.name)===norm(name));
+      if(!feld) { skipped++; continue; }
+
+      // Update state.shapes
+      const existing = state.shapes.find(s=>s.feldId===feld.id);
+      if(existing) { existing.outer=outer; existing.holes=holes; existing.betrieb=betrieb; }
+      else state.shapes.push({feldId:feld.id, betrieb, outer, holes});
+
+      // Persist to DB
+      try { await db.upsertShape(feld.id, betrieb, outer, holes); matched++; }
+      catch(e) { skipped++; }
+    }
+  }
+
+  // Refresh map if open
+  if(_mapInstance) { _mapInstance.remove(); _mapInstance=null; _schlagLayers={}; }
+  if(_drescherMap) { _drescherMap.remove(); _drescherMap=null; }
+
+  statusEl.style.color = matched>0?'var(--green)':'var(--red)';
+  statusEl.textContent = `✓ ${matched} Schläge gematcht und gespeichert${skipped?' · '+skipped+' nicht gefunden':''}`;
 }
 
 function exportCSV() {
