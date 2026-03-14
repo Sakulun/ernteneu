@@ -115,7 +115,7 @@ input[type=text].search-input{background:var(--bg2);border-color:var(--border);m
 .section-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .section-label::after{content:'';flex:1;height:1px;background:var(--border)}
 .gewicht-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.netto-display{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;margin:10px 0}
+.netto-display{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 12px;text-align:center;margin:10px 0}
 .netto-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px}
 .netto-val{font-family:var(--serif);font-size:34px;font-weight:600;color:var(--green2);line-height:1.1}
 .netto-unit{font-size:12px;color:var(--text3)}
@@ -487,6 +487,18 @@ const db = {
     const { error } = await sb.from('shapes').delete().eq('feld_id', feldId);
     if(error) throw error;
   },
+  async getLieferungen() {
+    const { data, error } = await sb.from('lieferungen').select('*').order('id', {ascending:false});
+    if(error) throw error; return data || [];
+  },
+  async insertLieferung(obj) {
+    const { data, error } = await sb.from('lieferungen').insert(obj).select().single();
+    if(error) throw error; return data;
+  },
+  async updateLieferung(id, updates) {
+    const { error } = await sb.from('lieferungen').update(updates).eq('id', id);
+    if(error) throw error;
+  },
   async getSilos() {
     const { data, error } = await sb.from('silos').select('*').order('id');
     if(error) throw error;
@@ -560,6 +572,9 @@ async function bootApp() {
 
     showLoader('Lade Silos…');
     state.silos = await db.getSilos().catch(e => { console.warn('getSilos:', e); return []; });
+    state.lieferungen = await db.getLieferungen().catch(e => { console.warn('getLieferungen:', e); return []; });
+    const lnrs = state.lieferungen.map(l=>parseInt((l.nr||'').replace('L-',''))).filter(n=>!isNaN(n));
+    state.nextLieferNr = lnrs.length ? Math.max(...lnrs)+1 : 1;
 
     showLoader('Lade Shapes…');
     try {
@@ -828,6 +843,8 @@ const state = {
   fuhren: [],
   silos: [],
   shapes: [],
+  lieferungen: [],
+  nextLieferNr: 1,
   nextId: 1, nextNr: 1, lastFeldId: null,
 };
 
@@ -908,6 +925,7 @@ function loginUser(user) {
 function logout() {
   hideSiloOverlay();
   if(typeof _gpsWatcher !== 'undefined' && _gpsWatcher) { navigator.geolocation.clearWatch(_gpsWatcher); _gpsWatcher = null; }
+  releaseWakeLock();
   if(_drescherMap){_drescherMap.remove();_drescherMap=null;}
   if(_mapInstance){_mapInstance.remove();_mapInstance=null;}
   state.currentUser = null;
@@ -1010,10 +1028,12 @@ function renderDrescher() {
     }, 0);
   }
   } else {
-    const fuhren = state.fuhren.filter(f=>f.drescherId===uid).sort((a,b)=>new Date(b.zeit)-new Date(a.zeit));
+    const nrNum = f => parseInt((f.nr||'').replace('F-',''))||0;
+    const fuhren = state.fuhren.filter(f=>f.drescherId===uid).sort((a,b)=>nrNum(b)-nrNum(a));
     document.getElementById('dtab').innerHTML = fuhren.length ? fuhren.map(f=>{
       const n=netto(f);
-      return `<div class="fuhre-item">
+      const bStyle = f.status==="offen" ? "border-color:var(--amber)" : "";
+      return `<div class="fuhre-item" style="${bStyle}">
         <div class="fuhre-top"><span class="fuhre-nr">${f.nr} · ${fmtDate(f.zeit)} ${fmtTime(f.zeit)}</span><span class="badge badge-${f.status}">${f.status.toUpperCase()}</span></div>
         <div class="fuhre-info">
           <div class="fuhre-kv"><span class="fk">Schlag </span><span class="fv">${getFeld(f.feldId).name||'–'}</span></div>
@@ -1073,9 +1093,12 @@ function renderAbfahrer() {
     <div class="tabs">
       <button class="tab ${aTab==='offen'?'active':''}" onclick="aTab='offen';renderAbfahrer()">Offen${offen.length?' ('+offen.length+')':''}</button>
       <button class="tab ${aTab==='fertig'?'active':''}" onclick="aTab='fertig';renderAbfahrer()">Erledigt</button>
+      <button class="tab ${aTab==='schlag'?'active':''}" onclick="aTab='schlag';renderAbfahrer()">🧭 Schlag</button>
     </div>
     <div id="atab"></div>`;
-  aTab==='offen'?renderAbfahrerOffen():renderAbfahrerFertig();
+  if(aTab==='offen') { if(_navMap){_navMap.remove();_navMap=null;} renderAbfahrerOffen(); }
+  else if(aTab==='fertig') { if(_navMap){_navMap.remove();_navMap=null;} renderAbfahrerFertig(); }
+  else renderAbfahrerSchlagsuche();
 }
 
 function renderAbfahrerOffen() {
@@ -1089,12 +1112,22 @@ function renderAbfahrerOffen() {
       </div>
       <div class="section-label">Gewichte</div>
       <div class="gewicht-grid">
-        <div class="form-group"><label>Vollgewicht (kg)</label><input type="number" id="voll-${f.id}" placeholder="28400" min="0" step="10" oninput="updNetto(${f.id})"></div>
-        <div class="form-group"><label>Leergewicht (kg)</label><input type="number" id="leer-${f.id}" placeholder="12600" min="0" step="10" oninput="updNetto(${f.id})"></div>
+        <div class="form-group">
+          <label>Vollgewicht (kg)</label>
+          <input type="text" inputmode="numeric" id="voll-${f.id}" placeholder="28.400"
+            style="font-size:20px;font-weight:700;letter-spacing:0.5px"
+            oninput="fmtGewicht(this);updNetto(${f.id})">
+        </div>
+        <div class="form-group">
+          <label>Leergewicht (kg)</label>
+          <input type="text" inputmode="numeric" id="leer-${f.id}" placeholder="12.600"
+            style="font-size:20px;font-weight:700;letter-spacing:0.5px"
+            oninput="fmtGewicht(this);updNetto(${f.id})">
+        </div>
       </div>
       <div class="netto-display">
         <div class="netto-label">Netto</div>
-        <div class="netto-val" id="netto-${f.id}">—</div>
+        <div class="netto-val" id="netto-${f.id}" style="font-size:28px">—</div>
         <div class="netto-unit">kg</div>
       </div>
       <div class="section-label">Qualität <span style="font-size:10px;color:var(--text3);font-weight:400">– alle optional, fehlende Angaben werden abgefragt</span></div>
@@ -1108,17 +1141,41 @@ function renderAbfahrerOffen() {
     `<div class="empty-state"><span class="live-dot"></span><br><br>Warte auf Zuweisung<br>vom Drescherfahrer&hellip;</div>`;
 }
 
+function parseGewicht(str) {
+  // Remove dots (thousand separators) and parse
+  return parseFloat((str||'').replace(/\./g,'').replace(',','.')) || 0;
+}
+
+function fmtGewicht(input) {
+  // Format with 1.000er dots while typing
+  const pos = input.selectionStart;
+  const raw = input.value.replace(/\./g,'').replace(/[^0-9]/g,'');
+  if(!raw) return;
+  const num = parseInt(raw);
+  const formatted = num.toLocaleString('de-DE');
+  const added = formatted.length - input.value.length;
+  input.value = formatted;
+  // Restore cursor position accounting for added dots
+  try { input.setSelectionRange(pos+added, pos+added); } catch(e) {}
+}
+
 function updNetto(fId) {
-  const v=parseFloat(document.getElementById('voll-'+fId).value)||0;
-  const l=parseFloat(document.getElementById('leer-'+fId).value)||0;
+  const v=parseGewicht(document.getElementById('voll-'+fId)?.value);
+  const l=parseGewicht(document.getElementById('leer-'+fId)?.value);
   const el=document.getElementById('netto-'+fId);
-  if(v&&l&&v>l){el.textContent=(v-l).toLocaleString('de-DE');el.style.color='var(--green2)';}
-  else{el.textContent='—';el.style.color='var(--text3)';}
+  if(!el) return;
+  if(v&&l&&v>l) {
+    el.textContent=(v-l).toLocaleString('de-DE');
+    el.style.color='var(--green2)';
+  } else {
+    el.textContent='—';
+    el.style.color='var(--text3)';
+  }
 }
 
 async function fuhreSpeichern(fId) {
-  const v=parseFloat(document.getElementById('voll-'+fId).value);
-  const l=parseFloat(document.getElementById('leer-'+fId).value);
+  const v=parseGewicht(document.getElementById('voll-'+fId)?.value);
+  const l=parseGewicht(document.getElementById('leer-'+fId)?.value);
   if(!v||!l||v<=l){alert('Bitte gültige Gewichte eingeben (Vollgew. > Leergew.).');return;}
 
   const f=state.fuhren.find(x=>x.id===fId);
@@ -1160,7 +1217,8 @@ async function fuhreSpeichern(fId) {
 }
 
 function renderAbfahrerFertig() {
-  const fuhren=state.fuhren.filter(f=>f.abfahrerId===state.currentUser.id&&f.status==='fertig').sort((a,b)=>new Date(b.zeit)-new Date(a.zeit));
+  const nrNum2 = f => parseInt((f.nr||'').replace('F-',''))||0;
+  const fuhren=state.fuhren.filter(f=>f.abfahrerId===state.currentUser.id&&f.status==='fertig').sort((a,b)=>nrNum2(b)-nrNum2(a));
   document.getElementById('atab').innerHTML=fuhren.length?fuhren.map(f=>{
     const n=netto(f);
     return `<div class="fuhre-item">
@@ -1221,6 +1279,10 @@ function renderAdmin() {
           <button class="sidebar-btn ${adminTab==='silos'?'active':''}" onclick="setAdminTab('silos')">
             <span class="sidebar-icon">🏭</span><span class="sidebar-label">Silomanagement</span>
           </button>
+          <div class="sidebar-section">Verkauf</div>
+          <button class="sidebar-btn ${adminTab==='warenausgang'?'active':''}" onclick="setAdminTab('warenausgang')">
+            <span class="sidebar-icon">🚛</span><span class="sidebar-label">Warenausgang</span>
+          </button>
           <div class="sidebar-section">System</div>
           <button class="sidebar-btn ${adminTab==='erntejahr'?'active':''}" onclick="setAdminTab('erntejahr')">
             <span class="sidebar-icon">🌱</span><span class="sidebar-label">Neues Erntejahr</span>
@@ -1248,6 +1310,7 @@ function renderAdmin() {
   else if(adminTab==='fortschritt') renderAdminFortschritt();
   else if(adminTab==='nutzer') renderAdminNutzer();
   else if(adminTab==='karte') renderAdminKarte();
+  else if(adminTab==='warenausgang') renderWarenausgang();
   else if(adminTab==='erntejahr') renderNeuesErntejahr();
   else if(adminTab==='silos') {
     document.getElementById('admintab').innerHTML = '';
@@ -2216,8 +2279,46 @@ function updateGPSMarkers(map) {
 }
 
 // Called when Fahrer logs in - share location
+
+// ─── WAKE LOCK (verhindert Bildschirm-Timeout) ───
+let _wakeLock = null;
+
+async function requestWakeLock() {
+  if(!('wakeLock' in navigator)) return; // nicht unterstützt (iOS Safari)
+  try {
+    _wakeLock = await navigator.wakeLock.request('screen');
+    _wakeLock.addEventListener('release', () => {
+      _wakeLock = null;
+      // Automatisch neu anfordern wenn Seite wieder sichtbar
+    });
+    console.log('Wake Lock aktiv – Bildschirm bleibt an');
+    const wlEl = document.getElementById('topbar-wakelock'); if(wlEl) wlEl.style.display='inline';
+  } catch(e) {
+    console.warn('Wake Lock nicht verfügbar:', e.message);
+  }
+}
+
+async function releaseWakeLock() {
+  if(_wakeLock) {
+    await _wakeLock.release();
+    _wakeLock = null;
+  }
+}
+
+// Wake Lock neu anfordern wenn Tab wieder aktiv wird (z.B. nach Handy entsperren)
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && state.currentUser) {
+    const role = state.currentUser?.role;
+    if(role === 'drescher' || role === 'abfahrer') {
+      requestWakeLock();
+    }
+  }
+});
+
 function shareUserGPS(userId) {
   if(!navigator.geolocation) return;
+  // Wake Lock aktivieren damit Bildschirm anlässt
+  requestWakeLock();
   navigator.geolocation.watchPosition(
     pos => {
       const lat = pos.coords.latitude, lon = pos.coords.longitude;
@@ -2384,6 +2485,156 @@ function qualitaetsFehlende(felder, werte) {
     .map(([,f]) => f.label);
 }
 
+
+// ─── FEUCHTE-GRENZWERTE ───
+function feuchteGrenzwert(fruchtart) {
+  const fa = (fruchtart||'').toLowerCase();
+  if(fa.includes('raps') || fa.includes('sonnenblume')) return 9.0;
+  if(fa.includes('erbse') || fa.includes('soja') || fa.includes('bohne')) return 13.0;
+  // Getreide (Standard)
+  return 15.0;
+}
+
+function feuchteZuHoch(f) {
+  if(!f.feuchte) return false;
+  return f.feuchte > feuchteGrenzwert(f.fruchtart);
+}
+
+
+// ─── NAVIGATION ZUM SCHLAG ───
+function navigiereZuSchlag(feldId) {
+  const shape = (state.shapes.length ? state.shapes : GEO_DATA).find(s=>s.feldId===feldId);
+  let lat, lon;
+  if(shape && shape.outer && shape.outer.length > 0) {
+    // Mittelpunkt des Polygons berechnen
+    const pts = shape.outer;
+    lat = pts.reduce((s,p)=>s+p[0],0)/pts.length;
+    lon = pts.reduce((s,p)=>s+p[1],0)/pts.length;
+  } else {
+    alert('Kein Standort für diesen Schlag hinterlegt.');
+    return;
+  }
+  // iOS: Apple Maps, Android/Desktop: Google Maps
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const url = isIOS
+    ? `maps://maps.apple.com/?daddr=${lat},${lon}&dirflg=d`
+    : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=driving`;
+  window.open(url, '_blank');
+}
+
+
+let _navMap = null;
+let _navLayers = {};
+let _navHighlight = null;
+
+function renderAbfahrerSchlagsuche() {
+  const felder = state.felder.filter(f=>f.status==='aktiv').sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  document.getElementById('atab').innerHTML =
+    '<div style="display:flex;height:calc(100vh - 140px);gap:0;overflow:hidden">'
+    // Left: search + list
+    +'<div style="width:300px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border)">'
+    +'<div style="padding:10px 12px;border-bottom:1px solid var(--border)">'
+    +'<input type="text" id="schlag-nav-search" class="search-input" style="margin:0"'
+    +' placeholder="Schlagname oder Fruchtart…" oninput="filterSchlagNav(this.value)" autocomplete="off">'
+    +'</div>'
+    +'<div id="schlag-nav-liste" style="flex:1;overflow-y:auto">'
+    +felder.map(f=>schlagNavItem(f)).join('')
+    +'</div></div>'
+    // Right: map
+    +'<div style="flex:1;position:relative">'
+    +'<div id="nav-map-container" style="width:100%;height:100%"></div>'
+    +'</div>'
+    +'</div>';
+  // Init map after DOM is ready
+  setTimeout(initNavMap, 50);
+}
+
+function initNavMap() {
+  if(_navMap) { _navMap.remove(); _navMap = null; }
+  _navLayers = {};
+  const container = document.getElementById('nav-map-container');
+  if(!container) return;
+  const map = L.map('nav-map-container', {center:[51.495,11.673], zoom:11});
+  _navMap = map;
+  const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri',maxZoom:19});
+  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19});
+  sat.addTo(map);
+  L.control.layers({'Satellit':sat,'OSM':osm},{},{position:'topleft'}).addTo(map);
+  // Draw all polygons
+  const shapes = state.shapes.length ? state.shapes : GEO_DATA;
+  shapes.forEach(entry => {
+    const feld = state.felder.find(x=>x.id===entry.feldId);
+    if(!feld || feld.status !== 'aktiv') return;
+    const style = schlagColor(feld.status);
+    const poly = L.polygon([entry.outer,...(entry.holes||[])], {...style, interactive:true});
+    poly.on('click', () => highlightSchlagNav(feld.id));
+    poly.bindTooltip(feld.name, {permanent:false, className:'schlag-popup', direction:'center'});
+    poly.addTo(map);
+    _navLayers[entry.feldId] = poly;
+  });
+  // Fit to all polygons
+  const allPts = Object.values(_navLayers);
+  if(allPts.length) {
+    const group = L.featureGroup(allPts);
+    map.fitBounds(group.getBounds(), {padding:[20,20]});
+  }
+}
+
+function highlightSchlagNav(feldId) {
+  // Reset previous highlight
+  if(_navHighlight && _navLayers[_navHighlight]) {
+    const f = state.felder.find(x=>x.id===_navHighlight);
+    if(f) _navLayers[_navHighlight].setStyle(schlagColor(f.status));
+  }
+  _navHighlight = feldId;
+  const layer = _navLayers[feldId];
+  if(layer) {
+    layer.setStyle({fillColor:'#facc15',fillOpacity:0.6,color:'#facc15',weight:3});
+    _navMap.fitBounds(layer.getBounds(), {padding:[40,40], maxZoom:16});
+  }
+  // Scroll list item into view
+  const el = document.getElementById('nav-item-'+feldId);
+  if(el) el.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function schlagNavItem(f) {
+  const shape = (state.shapes.length ? state.shapes : GEO_DATA).find(s=>s.feldId===f.id);
+  const hasCoords = shape && shape.outer && shape.outer.length > 0;
+  const statusColor = f.status==='aktiv'?'var(--gold2)':f.status==='abgeerntet'?'var(--green)':'var(--text3)';
+  const statusLabel = f.status==='aktiv'?'Aktiv':f.status==='abgeerntet'?'Fertig':'Inaktiv';
+  const isHighlighted = _navHighlight === f.id;
+  return '<div id="nav-item-'+f.id+'" onclick="highlightSchlagNav('+f.id+')"'
+    +' style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:1px solid var(--border);gap:8px;cursor:pointer;'
+    +(isHighlighted?'background:rgba(250,204,21,0.1);border-left:3px solid #facc15;':'')
+    +'">'
+    +'<div style="min-width:0;flex:1">'
+    +'<div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+f.name+'</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+f.fruchtart+' · '+f.flaeche+' ha · <span style="color:'+statusColor+'">'+statusLabel+'</span></div>'
+    +'</div>'
+    +(hasCoords
+      ? '<button onclick="event.stopPropagation();navigiereZuSchlag('+f.id+')" style="flex-shrink:0;background:var(--blue);color:#fff;border:none;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap">🧭 Los</button>'
+      : '<span style="flex-shrink:0;font-size:11px;color:var(--text3)">kein GPS</span>')
+    +'</div>';
+}
+
+function filterSchlagNav(q) {
+  const felder = state.felder
+    .filter(f => f.status==='aktiv' && (!q || f.name.toLowerCase().includes(q.toLowerCase()) || f.fruchtart.toLowerCase().includes(q.toLowerCase())))
+    .sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  document.getElementById('schlag-nav-liste').innerHTML = felder.length
+    ? felder.map(f=>schlagNavItem(f)).join('')
+    : '<div style="text-align:center;padding:24px;color:var(--text3)">Kein Schlag gefunden</div>';
+  // Highlight matching schlaege on map
+  if(_navMap) {
+    Object.entries(_navLayers).forEach(([id, layer]) => {
+      const feld = state.felder.find(x=>x.id===parseInt(id));
+      if(!feld) return;
+      const matches = !q || feld.name.toLowerCase().includes(q.toLowerCase()) || feld.fruchtart.toLowerCase().includes(q.toLowerCase());
+      layer.setStyle(matches ? {...schlagColor(feld.status), fillOpacity:0.5} : {fillOpacity:0.05, weight:0.5, color:'#333'});
+    });
+  }
+}
+
 // ─── FRUCHTART-FARBEN (global) ───
 const fruchtFarbe = {
   'Winterweichweizen': {bg:'rgba(196,160,60,0.18)', border:'rgba(196,160,60,0.5)', dot:'#c8a84b'},
@@ -2429,15 +2680,17 @@ function renderSiloManagement() {
     const sz = isBig ? 150 : 110;
     const r = (sz/2)-9;
     const circ = 2*Math.PI*r;
+    const hasFeuchteWarn = state.fuhren.filter(f=>f.siloId===s.id).some(feuchteZuHoch);
     const fc = overfull?'#ef4444':pct>85?'#e0943a':pct>0?'#4caf6e':'#2a422a';
-    const sd = (pct/100*circ).toFixed(1)+' '+circ.toFixed(1);
     const active = _activeSiloId===s.id;
+    const outerStroke = hasFeuchteWarn ? '#ef4444' : (active?'var(--gold)':'#2a422a');
+    const sd = (pct/100*circ).toFixed(1)+' '+circ.toFixed(1);
     const cnt = state.fuhren.filter(f=>f.siloId===s.id).length;
     const kl = kultur ? kultur
       .replace('Winterweichweizen','W.Weizen').replace('Wintergerste','W.Gerste')
       .replace('Winterraps','W.Raps').replace('Wintertriticale','W.Triticale')
       .replace('Winterdurum','W.Durum').replace('Winter','W.').replace('Sommer','So.') : '';
-    const strokeC = active ? 'var(--gold)' : '#2a422a';
+    const strokeC = hasFeuchteWarn ? '#ef4444' : (active ? 'var(--gold)' : '#2a422a');
     const strokeW = active ? 4 : 2;
     const fillBg = active ? '#1e321e' : '#161e16';
     const pctText = pct>0 ? `<text x="${sz/2}" y="${sz/2+22}" text-anchor="middle" fill="#5a7a5a" font-size="${isBig?11:9}" font-family="monospace">${pct.toFixed(0)}%</text>` : '';
@@ -2512,11 +2765,12 @@ function renderSiloManagement() {
     const verIcon = f.verifiziert ? '✓' : '⏳';
     const nettoStr = n ? (n/1000).toFixed(2)+' t' : '– t';
     const datum = new Date(f.zeit).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
+    const feuchteW = feuchteZuHoch(f);
     return `<div draggable="true"
       ondragstart="_dragFuhreId=${f.id};this.style.opacity='0.5'"
       ondragend="this.style.opacity='1'"
-      style="display:flex;border-radius:10px;overflow:hidden;margin-bottom:10px;cursor:grab;background:#1a2a1a;border:1px solid #2a3a2a">
-      <div style="width:6px;flex-shrink:0;background:${farbe.dot}"></div>
+      style="display:flex;border-radius:10px;overflow:hidden;margin-bottom:10px;cursor:grab;background:${feuchteW?'rgba(239,68,68,0.08)':'#1a2a1a'};border:1px solid ${feuchteW?'#ef4444':'#2a3a2a'}">
+      <div style="width:6px;flex-shrink:0;background:${feuchteW?'#ef4444':farbe.dot}"></div>
       <div style="padding:11px 13px;flex:1;min-width:0">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
           <span style="font-size:16px;font-weight:700;color:#e0f0e0">${f.fruchtart}</span>
@@ -2616,21 +2870,28 @@ function renderSiloDetail(siloId) {
     const n = netto(f);
     const fr = getFruchtFarbe(f.fruchtart);
     const datum = new Date(f.zeit).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
-    return `<div style="display:flex;border-radius:8px;overflow:hidden;margin-bottom:8px;background:#1a2a1a;border:1px solid #2a3a2a">
-      <div style="width:5px;flex-shrink:0;background:${fr.dot}"></div>
-      <div style="padding:10px 12px;flex:1;min-width:0">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-          <span style="font-size:15px;font-weight:700;color:#f0e6a0">${n?(n/1000).toFixed(2)+' t':'–'}</span>
-          <button onclick="removeFuhreFromSilo(${f.id})" title="Aus Silo entfernen"
-            style="background:none;border:1px solid #4a6a4a;color:#8ab08a;cursor:pointer;font-size:14px;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
-        </div>
-        <div style="font-size:13px;color:#a0c0a0">${f.fruchtart}</div>
-        <div style="font-size:12px;color:#6a8a6a;margin-top:2px">${getFeld(f.feldId).name||'–'} · ${datum}</div>
-        <div style="font-size:12px;color:#6a8a6a;margin-top:1px">
-          ${f.feuchte!=null?f.feuchte+'%F':''}${f.protein!=null?' · '+f.protein+'%P':''}${f.hlGewicht!=null?' · HL'+f.hlGewicht:''}
-        </div>
-      </div>
-    </div>`;
+    const feuchteWarn = feuchteZuHoch(f);
+    const borderColor = feuchteWarn ? '#ef4444' : '#2a3a2a';
+    const bgColor = feuchteWarn ? 'rgba(239,68,68,0.08)' : '#1a2a1a';
+    const stripColor = feuchteWarn ? '#ef4444' : fr.dot;
+    const warnBadge = feuchteWarn ? '<span style="font-size:11px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.15);padding:2px 8px;border-radius:10px">&#9888; Feuchte zu hoch</span>' : '';
+    const feuchteColor = feuchteWarn ? '#ef4444' : '#6a8a6a';
+    const feuchteWeight = feuchteWarn ? '700' : '400';
+    const feuchteStr = f.feuchte!=null ? '<span style="color:'+feuchteColor+';font-weight:'+feuchteWeight+'">'+f.feuchte+'%F'+(feuchteWarn?' &#9888;':'')+'</span>' : '';
+    const proteinStr = f.protein!=null ? ' <span style="color:#6a8a6a">· '+f.protein+'%P</span>' : '';
+    const hlStr = f.hlGewicht!=null ? ' <span style="color:#6a8a6a">· HL '+f.hlGewicht+'</span>' : '';
+    return '<div style="display:flex;border-radius:8px;overflow:hidden;margin-bottom:8px;background:'+bgColor+';border:1px solid '+borderColor+'">'
+      +'<div style="width:5px;flex-shrink:0;background:'+stripColor+'"></div>'
+      +'<div style="padding:10px 12px;flex:1;min-width:0">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'
+      +'<span style="font-size:15px;font-weight:700;color:#f0e6a0">'+(n?(n/1000).toFixed(2)+' t':'–')+'</span>'
+      +warnBadge
+      +'<button onclick="removeFuhreFromSilo('+f.id+')" title="Aus Silo entfernen" style="background:none;border:1px solid #4a6a4a;color:#8ab08a;cursor:pointer;font-size:14px;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">&#x2715;</button>'
+      +'</div>'
+      +'<div style="font-size:13px;color:#a0c0a0">'+f.fruchtart+'</div>'
+      +'<div style="font-size:12px;color:#6a8a6a;margin-top:2px">'+(getFeld(f.feldId).name||'–')+' · '+datum+'</div>'
+      +'<div style="font-size:12px;margin-top:1px">'+feuchteStr+proteinStr+hlStr+'</div>'
+      +'</div></div>';
   };
 
   panel.innerHTML = `
@@ -2738,6 +2999,216 @@ function renderSilomeister() {
 
 // ─── STAMMDATEN IMPORT ───
 
+
+
+// ─── WARENAUSGANG ───
+const LOGO_DATA_URL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyMjAgNjAnIHdpZHRoPScyMjAnIGhlaWdodD0nNjAnPgogIDxyZWN0IHg9JzAnIHk9JzAnIHdpZHRoPSc2MCcgaGVpZ2h0PSc2MCcgcng9JzQnIGZpbGw9JyMzYTdkMmMnLz4KICA8bGluZSB4MT0nMzAnIHkxPSc1MicgeDI9JzMwJyB5Mj0nMjAnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPScyLjUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPgogIDxwYXRoIGQ9J00zMCAzOCBRMTggMzIgMTYgMjIgUTI0IDI2IDMwIDM4JyBmaWxsPScjZmZmJyBvcGFjaXR5PScwLjknLz4KICA8cGF0aCBkPSdNMzAgMzAgUTQyIDI0IDQ0IDE0IFEzNiAxOCAzMCAzMCcgZmlsbD0nI2ZmZicgb3BhY2l0eT0nMC45Jy8+CiAgPGVsbGlwc2UgY3g9JzMwJyBjeT0nMTcnIHJ4PSc0JyByeT0nNicgZmlsbD0nI2ZmZicgb3BhY2l0eT0nMC45NScvPgogIDxlbGxpcHNlIGN4PScyNCcgY3k9JzE5JyByeD0nMycgcnk9JzUnIGZpbGw9JyNmZmYnIG9wYWNpdHk9JzAuOCcgdHJhbnNmb3JtPSdyb3RhdGUoLTE1IDI0IDE5KScvPgogIDxlbGxpcHNlIGN4PSczNicgY3k9JzE5JyByeD0nMycgcnk9JzUnIGZpbGw9JyNmZmYnIG9wYWNpdHk9JzAuOCcgdHJhbnNmb3JtPSdyb3RhdGUoMTUgMzYgMTkpJy8+CiAgPHRleHQgeD0nNjgnIHk9JzIwJyBmb250LWZhbWlseT0nQXJpYWwgQmxhY2ssQXJpYWwsc2Fucy1zZXJpZicgZm9udC13ZWlnaHQ9JzkwMCcgZm9udC1zaXplPScxMScgZmlsbD0nIzNhN2QyYycgbGV0dGVyLXNwYWNpbmc9JzAuNSc+U0FBVEdVVCAmYW1wOyBBR1JBUlNFUlZJQ0U8L3RleHQ+CiAgPHRleHQgeD0nNjgnIHk9JzM1JyBmb250LWZhbWlseT0nQXJpYWwgQmxhY2ssQXJpYWwsc2Fucy1zZXJpZicgZm9udC13ZWlnaHQ9JzkwMCcgZm9udC1zaXplPScxMycgZmlsbD0nIzNhN2QyYycgbGV0dGVyLXNwYWNpbmc9JzAuNSc+QkVFU0VOU1RFRFQgR21iSDwvdGV4dD4KICA8bGluZSB4MT0nNjgnIHkxPSczOScgeDI9JzIxNScgeTI9JzM5JyBzdHJva2U9JyMzYTdkMmMnIHN0cm9rZS13aWR0aD0nMS41Jy8+Cjwvc3ZnPg==';
+const FIRMA_NAME = 'Saatgut- & Agrarservice Beesenstedt GmbH';
+const FIRMA_GF = 'Geschäftsführer: Johann Nuscheler';
+const FIRMA_HRB = 'Registergericht Halle HRB 10 422';
+const FIRMA_STNR = 'St. Nr. 110/299/41574';
+const FIRMA_UST = 'UST-ID DE 139712562';
+const FIRMA_BANK1 = 'Saalkreissparkasse Halle';
+const FIRMA_IBAN1 = 'IBAN: DE17 8005 3762 0387 3018 20';
+const FIRMA_BIC1 = 'BIC: NOLADE21HAL';
+const FIRMA_BANK2 = 'Raiffeisenbank Pfaffenwinkel';
+const FIRMA_IBAN2 = 'IBAN: DE10 7016 9509 0000 3126 14';
+const FIRMA_BIC2 = 'BIC: GENODEF1PEI';
+
+function renderWarenausgang() {
+  const offen = state.lieferungen.filter(l=>l.status==='offen');
+  const abg   = state.lieferungen.filter(l=>l.status==='abgeschlossen');
+  const nettoT = abg.reduce((s,l)=>s+(l.vollgewicht&&l.leergewicht?l.vollgewicht-l.leergewicht:0),0)/1000;
+  const lRow = (l) => {
+    const n = (l.vollgewicht&&l.leergewicht) ? ((l.vollgewicht-l.leergewicht)/1000).toFixed(2)+' t' : '–';
+    const isOffen = l.status==='offen';
+    const bc = isOffen ? 'var(--amber)' : 'var(--border)';
+    return '<div class="card" style="margin-bottom:10px;border-color:'+bc+'">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">'
+      +'<div><div style="font-size:13px;font-weight:700;color:var(--text)">'+l.nr+' · '+new Date(l.datum).toLocaleDateString('de-DE')+'</div>'
+      +'<div style="font-size:12px;color:var(--text3);margin-top:2px">'+l.kaeufer_name+(l.kennzeichen?' · '+l.kennzeichen:'')+'</div>'
+      +'<div style="font-size:12px;color:var(--text3)">'+l.fruchtart+'</div></div>'
+      +'<div style="text-align:right;flex-shrink:0"><div style="font-size:16px;font-weight:700;color:var(--gold2)">'+n+'</div>'
+      +'<span class="badge badge-'+(isOffen?'offen':'fertig')+'">'+(isOffen?'OFFEN':'FERTIG')+'</span></div></div>'
+      +'<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'
+      +(isOffen?'<button class="btn btn-sm" style="background:var(--blue);color:#fff;border:none" onclick="lieferungAbschliessen('+l.id+')">⚖ Vollgewicht eingeben</button>':'')
+      +'<button class="btn btn-sm btn-outline" onclick="lieferungPDF('+l.id+')">📄 Lieferschein</button>'
+      +'</div></div>';
+  };
+  document.getElementById('admintab').innerHTML = ''
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1;min-width:240px">'
+    +'<div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--amber)">'+offen.length+'</div><div class="stat-label">offen</div></div>'
+    +'<div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--green)">'+abg.length+'</div><div class="stat-label">abgeschlossen</div></div>'
+    +'<div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--gold2)">'+nettoT.toFixed(1)+'</div><div class="stat-label">t ausgeliefert</div></div>'
+    +'</div><button class="btn btn-primary" onclick="neueLieferungDialog()">+ Neue Lieferung</button></div>'
+    +(offen.length?'<div class="section-label" style="color:var(--amber)">⚠ Offen ('+offen.length+')</div>'+offen.map(lRow).join(''):'')
+    +(abg.length?'<div class="section-label" style="margin-top:8px">✓ Abgeschlossen ('+abg.length+')</div>'+abg.map(lRow).join(''):'')
+    +(!state.lieferungen.length?'<div class="empty-state">Noch keine Lieferungen.<br>Klicke auf „+ Neue Lieferung".</div>':'');
+}
+
+function neueLieferungDialog() {
+  const fas = [...new Set(state.felder.map(f=>f.fruchtart))].sort();
+  const faOpts = fas.map(fa=>'<option value="'+fa+'">'+fa+'</option>').join('');
+  const m = document.createElement('div');
+  m.id = 'liefer-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML = '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;width:100%;max-width:480px;box-shadow:var(--shadow);max-height:90vh;overflow-y:auto">'
+    +'<div style="font-family:var(--serif);font-size:20px;color:var(--gold2);margin-bottom:16px">🚛 Neue Lieferung</div>'
+    +'<div class="form-group"><label>Käufer / Empfänger *</label><input type="text" id="l-kaeufer" placeholder="z.B. RWA Magdeburg"></div>'
+    +'<div class="form-group"><label>Adresse Käufer</label><input type="text" id="l-adresse" placeholder="Straße, PLZ Ort"></div>'
+    +'<div class="form-group"><label>Fruchtart *</label><select id="l-fruchtart"><option value="">– wählen –</option>'+faOpts+'</select></div>'
+    +'<div class="form-group"><label>Kennzeichen LKW</label><input type="text" id="l-kz" placeholder="z.B. HAL-XX 123"></div>'
+    +'<div class="form-group"><label>Spedition</label><input type="text" id="l-spedition"></div>'
+    +'<div class="form-group"><label>Kontrakt-Nr.</label><input type="text" id="l-kontrakt"></div>'
+    +'<div class="form-group"><label>Leergewicht (kg) *</label><input type="text" inputmode="numeric" id="l-leer" placeholder="14.500" oninput="fmtGewicht(this)"></div>'
+    +'<div class="form-group"><label>Notiz</label><input type="text" id="l-notiz"></div>'
+    +'<div style="display:flex;gap:8px;margin-top:8px">'
+    +'<button class="btn btn-primary" style="flex:1" onclick="lieferungSpeichern()">Lieferung anlegen</button>'
+    +'<button class="btn btn-outline" onclick="document.getElementById(\'liefer-modal\').remove()">Abbrechen</button>'
+    +'</div></div>';
+  document.body.appendChild(m);
+}
+
+async function lieferungSpeichern() {
+  const kaeufer = document.getElementById('l-kaeufer').value.trim();
+  const fruchtart = document.getElementById('l-fruchtart').value;
+  const leer = parseGewicht(document.getElementById('l-leer').value);
+  if(!kaeufer||!fruchtart||!leer){alert('Bitte Käufer, Fruchtart und Leergewicht eingeben.');return;}
+  const nr = 'L-'+String(state.nextLieferNr).padStart(3,'0');
+  state.nextLieferNr++;
+  const obj = {
+    nr, fruchtart, leergewicht:leer,
+    kaeufer_name:kaeufer,
+    kaeufer_adresse:document.getElementById('l-adresse').value.trim()||null,
+    kennzeichen:document.getElementById('l-kz').value.trim()||null,
+    spedition:document.getElementById('l-spedition').value.trim()||null,
+    kontrakt:document.getElementById('l-kontrakt').value.trim()||null,
+    notiz:document.getElementById('l-notiz').value.trim()||null,
+    status:'offen', erstellt_von:state.currentUser.id
+  };
+  document.getElementById('liefer-modal').remove();
+  try {
+    const saved = await db.insertLieferung(obj);
+    state.lieferungen.unshift(saved);
+    showToast('✓ Lieferung '+nr+' angelegt');
+    renderWarenausgang();
+  } catch(e) { showToast('⚠ '+e.message,'error'); state.nextLieferNr--; }
+}
+
+function lieferungAbschliessen(id) {
+  const l = state.lieferungen.find(x=>x.id===id);
+  if(!l) return;
+  const leerStr = l.leergewicht?l.leergewicht.toLocaleString('de-DE'):'–';
+  const m = document.createElement('div');
+  m.id = 'voll-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML = '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:var(--shadow)">'
+    +'<div style="font-family:var(--serif);font-size:18px;color:var(--gold2);margin-bottom:4px">⚖ Vollgewicht eingeben</div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:16px">'+l.nr+' · '+l.kaeufer_name+' · '+l.fruchtart+'</div>'
+    +'<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:16px;text-align:center">'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:4px">Leergewicht</div>'
+    +'<div style="font-size:22px;font-weight:700;color:var(--text)">'+leerStr+' kg</div></div>'
+    +'<div class="form-group"><label>Vollgewicht (kg) *</label>'
+    +'<input type="text" inputmode="numeric" id="l-voll" placeholder="38.500" style="font-size:20px;font-weight:700"'
+    +' oninput="fmtGewicht(this);(()=>{const v=parseGewicht(this.value);const el=document.getElementById(\'liefer-netto-val\');if(!el)return;if(v&&'+l.leergewicht+'&&v>'+l.leergewicht+'){el.textContent=((v-'+l.leergewicht+')/1000).toFixed(2)+\' t\';el.style.color=\'var(--green2)\'}else{el.textContent=\'–\';el.style.color=\'var(--text3)\'}})()"></div>'
+    +'<div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center;margin-bottom:16px">'
+    +'<div style="font-size:11px;color:var(--text3)">Netto</div>'
+    +'<div id="liefer-netto-val" style="font-size:26px;font-weight:700;color:var(--text3)">–</div></div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-primary" style="flex:1" onclick="lieferungAbschliessenSpeichern('+id+')">✓ Abschließen</button>'
+    +'<button class="btn btn-outline" onclick="document.getElementById(\'voll-modal\').remove()">Abbrechen</button>'
+    +'</div></div>';
+  document.body.appendChild(m);
+}
+
+async function lieferungAbschliessenSpeichern(id) {
+  const l = state.lieferungen.find(x=>x.id===id);
+  if(!l) return;
+  const voll = parseGewicht(document.getElementById('l-voll')?.value);
+  if(!voll||!l.leergewicht||voll<=l.leergewicht){alert('Bitte gültiges Vollgewicht eingeben (> Leergewicht).');return;}
+  l.vollgewicht=voll; l.status='abgeschlossen';
+  document.getElementById('voll-modal')?.remove();
+  renderWarenausgang();
+  try {
+    await db.updateLieferung(id,{vollgewicht:voll,status:'abgeschlossen'});
+    showToast('✓ '+l.nr+' abgeschlossen · Netto: '+((voll-l.leergewicht)/1000).toFixed(2)+' t');
+  } catch(e) { showToast('⚠ '+e.message,'error'); l.vollgewicht=null; l.status='offen'; renderWarenausgang(); }
+}
+
+function lieferungPDF(id) {
+  const l = state.lieferungen.find(x=>x.id===id);
+  if(!l) return;
+  const datum = new Date(l.datum).toLocaleDateString('de-DE');
+  const uhrzeit = new Date(l.datum).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+  const leer = l.leergewicht?l.leergewicht.toLocaleString('de-DE')+' kg':'–';
+  const voll = l.vollgewicht?l.vollgewicht.toLocaleString('de-DE')+' kg':'–';
+  const netto = (l.vollgewicht&&l.leergewicht)?((l.vollgewicht-l.leergewicht)/1000).toFixed(2)+' t':'–';
+  const win = window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">'
+    +'<title>Lieferschein '+l.nr+'</title><style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:"Segoe UI",Arial,sans-serif;font-size:11px;color:#1a1a1a;padding:24px 32px}'
+    +'.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:2px solid #3a7d2c;padding-bottom:14px}'
+    +'.firma{font-size:10px;color:#444;margin-top:6px;line-height:1.6}'
+    +'.title{font-size:36px;font-weight:900;color:#1a1a1a}'
+    +'.meta{border-collapse:collapse;min-width:200px;margin-top:8px;margin-left:auto}'
+    +'.meta td{padding:4px 10px;border:1px solid #ccc;font-size:11px}'
+    +'.meta td:first-child{color:#555;background:#f8f8f8;width:130px}'
+    +'.meta td:last-child{font-weight:600;text-align:right}'
+    +'.kaeufer{margin:18px 0 4px;font-size:13px;font-weight:700}'
+    +'table.main{width:100%;border-collapse:collapse;margin:18px 0}'
+    +'table.main th{background:#3a7d2c;color:#fff;padding:7px 10px;text-align:left;font-size:11px}'
+    +'table.main td{padding:8px 10px;border-bottom:1px solid #e0e0e0}'
+    +'table.main tr.total td{background:#f0f7ee;font-weight:700;font-size:13px;border-top:2px solid #3a7d2c}'
+    +'.sped{display:flex;gap:16px;margin:8px 0 16px}'
+    +'.sped .f{flex:1;border:1px solid #ccc;border-radius:4px;padding:8px 12px}'
+    +'.sped .f .l{font-size:10px;color:#888;margin-bottom:3px}'
+    +'.sped .f .v{font-size:12px;font-weight:600}'
+    +'.footer{margin-top:36px;padding-top:12px;border-top:1px solid #ccc;display:flex;justify-content:space-between;gap:20px}'
+    +'.sign .line{border-bottom:1px solid #333;height:36px;margin-bottom:4px;}'
+    +'.sign .sub{font-size:9px;color:#777}'
+    +'.bank{font-size:9px;color:#555;line-height:1.7}'
+    +'.bank h4{font-size:10px;font-weight:700;color:#1a1a1a;margin-bottom:3px}'
+    +'@media print{body{padding:12px 20px} @page{margin:1.2cm;size:A4 portrait}}'
+    +'</style></head><body>'
+    +'<div class="hdr"><div>'
+    +'<img src="'+LOGO_DATA_URL+'" height="56" alt="Logo">'
+    +'<div class="firma">Bahnhofstraße 11 · 06198 Salzatal OT Beesenstedt<br>☎ 03 47 73 - 3 90 01 &nbsp;|&nbsp; ✉ office@landgut-nuscheler.de</div>'
+    +'</div><div style="text-align:right"><div class="title">Lieferschein</div>'
+    +'<table class="meta"><tr><td>Nummer</td><td>'+l.nr+'</td></tr>'
+    +'<tr><td>Datum</td><td>'+datum+'</td></tr>'
+    +'<tr><td>Uhrzeit</td><td>'+uhrzeit+' Uhr</td></tr>'
+    +(l.kontrakt?'<tr><td>Kontrakt</td><td>'+l.kontrakt+'</td></tr>':'')
+    +'</table></div></div>'
+    +'<div class="kaeufer">'+l.kaeufer_name+'</div>'
+    +(l.kaeufer_adresse?'<div style="font-size:11px;color:#444;margin-bottom:16px">'+l.kaeufer_adresse+'</div>':'<div style="margin-bottom:16px"></div>')
+    +'<table class="main"><thead><tr>'
+    +'<th>Artikel</th><th>Einheit</th><th>Leergewicht</th><th>Vollgewicht</th><th style="text-align:right">Nettomenge</th>'
+    +'</tr></thead><tbody>'
+    +'<tr><td style="font-weight:600">'+l.fruchtart+'</td><td>t</td><td>'+leer+'</td><td>'+voll+'</td><td style="text-align:right;font-weight:700;font-size:13px">'+netto+'</td></tr>'
+    +'<tr style="height:28px"><td colspan="5"></td></tr>'
+    +'<tr style="height:28px"><td colspan="5"></td></tr>'
+    +'</tbody><tfoot><tr class="total"><td colspan="4">Gesamt Netto</td><td style="text-align:right">'+netto+'</td></tr></tfoot></table>'
+    +'<div class="sped">'
+    +'<div class="f"><div class="l">Spedition</div><div class="v">'+(l.spedition||'')+'</div></div>'
+    +'<div class="f"><div class="l">Kennzeichen</div><div class="v">'+(l.kennzeichen||'')+'</div></div>'
+    +'</div>'
+    +'<div style="font-size:11px;margin-bottom:16px">Rückstellmuster: <span style="border-bottom:1px solid #333;display:inline-block;width:200px;margin-left:8px">&nbsp;</span></div>'
+    +(l.notiz?'<div style="font-size:11px;color:#555;margin-bottom:8px">Notiz: '+l.notiz+'</div>':'')
+    +'<div class="footer">'
+    +'<div style="flex:2"><div style="font-size:11px;font-weight:600;margin-bottom:4px">'+FIRMA_NAME+'</div>'
+    +'<div style="font-size:9px;color:#666;line-height:1.6;margin-bottom:14px">'+FIRMA_HRB+'<br>'+FIRMA_GF+'<br>'+FIRMA_STNR+'<br>'+FIRMA_UST+'</div>'
+    +'<div class="sign"><div class="line"></div><div class="sub">Unterschrift / Stempel Aussteller</div></div></div>'
+    +'<div style="flex:1"><div class="sign"><div class="line"></div><div class="sub">Unterschrift Empfänger / Lieferant</div></div></div>'
+    +'<div style="flex:1.5"><div class="bank"><h4>Bankverbindungen</h4>'
+    +FIRMA_BANK1+'<br>'+FIRMA_IBAN1+'<br>'+FIRMA_BIC1+'<br><br>'
+    +FIRMA_BANK2+'<br>'+FIRMA_IBAN2+'<br>'+FIRMA_BIC2+'</div></div>'
+    +'</div>'
+    +'<script>window.onload=()=>window.print()<\/script>'
+    +'</body></html>');
+  win.document.close();
+}
 
 // ─── NEUES ERNTEJAHR ───
 let _erntejahrStep = 0; // 0=warn, 1=csv-done, 2=ready
