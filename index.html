@@ -605,7 +605,12 @@ async function bootApp() {
           else if(adminTab === 'fuhren') renderAdminFuhren();
         }
         else if(role === 'drescher' && dTab === 'meine') renderDrescher();
-        else if(role === 'abfahrer' && aTab === 'fertig') renderAbfahrer();
+        else if(role === 'abfahrer') {
+          const vorher = state.fuhren.filter(f=>f.abfahrerId===state.currentUser.id&&f.status==='offen').length;
+          renderAbfahrer();
+          const nachher = state.fuhren.filter(f=>f.abfahrerId===state.currentUser.id&&f.status==='offen').length;
+          if(nachher > vorher) showToast('🚛 Neue Fuhre zugewiesen!');
+        }
       });
     } catch(e) { console.warn('Realtime nicht verfügbar:', e); }
 
