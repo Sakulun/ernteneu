@@ -533,7 +533,7 @@ const db = {
     if(error) throw error;
     return data.map(f => ({
       id: f.id, name: f.name, flaeche: parseFloat(f.flaeche),
-      fruchtart: f.fruchtart, status: f.status
+      fruchtart: f.fruchtart, status: f.status, betrieb: f.betrieb||''
     }));
   },
   async updateFeldStatus(id, status) {
@@ -557,6 +557,7 @@ const db = {
       hlGewicht: f.hl_gewicht ? parseFloat(f.hl_gewicht) : null,
       gluten: f.gluten ? parseFloat(f.gluten) : null,
       oelgehalt: f.oelgehalt ? parseFloat(f.oelgehalt) : null,
+      sorte: f.sorte || null,
       zeit: f.zeit,
       verifiziert: f.verifiziert || false,
       verifiziertVon: f.verifiziert_von || null,
@@ -572,7 +573,7 @@ const db = {
     const { data, error } = await sb.from('fuhren').insert({
       nr: f.nr, status: 'offen',
       drescher_id: f.drescherId, abfahrer_id: f.abfahrerId,
-      feld_id: f.feldId, fruchtart: f.fruchtart,
+      feld_id: f.feldId, fruchtart: f.fruchtart, sorte: f.sorte||null,
       zeit: f.zeit
     }).select().single();
     if(error) throw error;
@@ -613,6 +614,11 @@ const db = {
   async deleteShape(feldId) {
     const { error } = await sb.from('shapes').delete().eq('feld_id', feldId);
     if(error) throw error;
+  },
+  async getVermehrungen() {
+    const { data, error } = await sb.from('vermehrungen').select('*');
+    if(error) throw error;
+    return data || [];
   },
   async getLieferungen() {
     const { data, error } = await sb.from('lieferungen').select('*').order('id', {ascending:false});
@@ -700,6 +706,7 @@ async function bootApp() {
     showLoader('Lade Silos…');
     state.silos = await db.getSilos().catch(e => { console.warn('getSilos:', e); return []; });
     state.lieferungen = await db.getLieferungen().catch(e => { console.warn('getLieferungen:', e); return []; });
+    state.vermehrungen = await db.getVermehrungen().catch(e => { console.warn('getVermehrungen:', e); return []; });
     const lnrs = state.lieferungen.map(l=>parseInt((l.nr||'').replace('L-',''))).filter(n=>!isNaN(n));
     state.nextLieferNr = lnrs.length ? Math.max(...lnrs)+1 : 1;
 
@@ -971,6 +978,7 @@ const state = {
   silos: [],
   shapes: [],
   lieferungen: [],
+  vermehrungen: [],
   nextLieferNr: 1,
   nextId: 1, nextNr: 1, lastFeldId: null,
 };
@@ -1136,6 +1144,12 @@ function renderDrescher() {
           <label>Fruchtart</label>
           <div class="fruchtart-fixed" id="d-fruchtart-display">— wird automatisch gesetzt —</div>
         </div>
+        <div id="d-sorte-group" style="display:none" class="form-group">
+          <label>Partie / Sorte</label>
+          <select id="d-sorte">
+            <option value="">Konsum</option>
+          </select>
+        </div>
         <div class="form-group">
           <label>Abfahrer (${freieAbfahrer.length} verfügbar)</label>
           <select id="d-abf" ${noAbfahrer||noFelder?'disabled':''}>
@@ -1179,11 +1193,26 @@ function drescherFeldWahl() {
   const el = document.getElementById('d-fruchtart-display');
   if(feldId) {
     const feld = getFeld(feldId);
-    el.textContent = feld.fruchtart || '–';
-    el.style.color = 'var(--gold2)';
+    const bio = isBioBetrieb(feld.betrieb);
+    el.innerHTML = (bio ? '<span style="color:#4ade80;font-weight:700">🌿 BIO</span> · ' : '') + (feld.fruchtart || '–');
+    el.style.color = bio ? '#4ade80' : 'var(--gold2)';
+    // Vermehrungen
+    const verms = getVermehrungenForFeld(feldId);
+    const sorteGroup = document.getElementById('d-sorte-group');
+    const sorteSelect = document.getElementById('d-sorte');
+    if(verms.length > 0 && sorteGroup && sorteSelect) {
+      sorteGroup.style.display = 'block';
+      sorteSelect.innerHTML = '<option value="">Konsum (' + feld.fruchtart + ')</option>'
+        + verms.map(v => `<option value="${v.sorte}">🌱 Vermehrung: ${v.sorte} (${v.flaeche} ha)</option>`).join('');
+    } else if(sorteGroup) {
+      sorteGroup.style.display = 'none';
+      if(sorteSelect) sorteSelect.value = '';
+    }
   } else {
     el.textContent = '— wird automatisch gesetzt —';
     el.style.color = 'var(--text3)';
+    const sg = document.getElementById('d-sorte-group');
+    if(sg) sg.style.display = 'none';
   }
 }
 
@@ -1193,11 +1222,13 @@ async function drescherZuweisen() {
   if(!feldId||!abfahrerId) { alert('Bitte alle Felder ausfüllen.'); return; }
   if(!abfahrerIstFrei(abfahrerId)) { alert('Dieser Abfahrer hat noch eine offene Fuhre!'); return; }
   const feld = getFeld(feldId);
+  const sorteEl = document.getElementById('d-sorte');
+  const sorte = sorteEl ? (sorteEl.value || null) : null;
   const nr = 'F-'+String(state.nextNr).padStart(3,'0');
   const newFuhre = {
     id: state.nextId++, nr, status:'offen',
     drescherId: state.currentUser.id, abfahrerId,
-    feldId, fruchtart: feld.fruchtart||'',
+    feldId, fruchtart: feld.fruchtart||'', sorte,
     vollgewicht:null, leergewicht:null,
     feuchte:null, fallzahl:null, protein:null, hlGewicht:null,
     zeit: new Date().toISOString()
@@ -1208,7 +1239,7 @@ async function drescherZuweisen() {
   dTab='meine'; renderDrescher();
   try {
     const dbId = await db.insertFuhre(newFuhre);
-    newFuhre.id = dbId; // update with real DB id
+    newFuhre.id = dbId;
   } catch(e) { showToast('⚠ Fuhre nicht gespeichert: '+e.message, 'error'); }
 }
 
@@ -1233,11 +1264,15 @@ function renderAbfahrerOffen() {
   const fuhren=state.fuhren.filter(f=>f.abfahrerId===state.currentUser.id&&f.status==='offen').sort((a,b)=>new Date(b.zeit)-new Date(a.zeit));
   document.getElementById('atab').innerHTML = fuhren.length ? fuhren.map(f=>`
     <div class="card">
-      <div class="card-header">
-        <div><div class="card-title">${getFeld(f.feldId).name}</div>
-        <div class="card-sub">${f.fruchtart} · ${f.nr} · ${fmtTime(f.zeit)}</div></div>
+      <div class="card-header" style="${isBioFuhre(f)?'background:rgba(22,101,52,0.15);border-bottom:1px solid #166534':''}">
+        <div>
+          <div class="card-title">${getFeld(f.feldId).name}${isBioFuhre(f)?bioBadge(true):''}</div>
+          <div class="card-sub">${f.fruchtart} · ${f.nr} · ${fmtTime(f.zeit)}</div>
+        </div>
         <span class="badge badge-offen">OFFEN</span>
       </div>
+      ${isBioFuhre(f) ? '<div style="background:#14532d;color:#bbf7d0;font-size:13px;font-weight:700;padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #166534"><span style="font-size:18px">🌿</span><div><div>BIO-WARE – zertifizierte Ernte</div><div style="font-size:11px;font-weight:400;opacity:0.8">Betrieb: '+getFeld(f.feldId).betrieb+'</div></div></div>' : ''}
+      ${f.sorte ? '<div style="background:#1e3a5f;color:#93c5fd;font-size:13px;font-weight:700;padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1e40af"><span style="font-size:18px">🌱</span><div><div>Z-SAATGUT · Vermehrung: '+f.sorte+'</div><div style="font-size:11px;font-weight:400;opacity:0.8">Bitte separat abladen – eigenes Silo!</div></div></div>' : ''}
       <div class="section-label">Gewichte</div>
       <div class="gewicht-grid">
         <div class="form-group">
@@ -1510,10 +1545,11 @@ function renderAdminSchlaege() {
       : f.status==='abgeerntet'
       ? '<span class="badge badge-abgeerntet">FERTIG</span>'
       : '<span class="badge badge-inaktiv">INAKTIV</span>';
-    return `<div class="schlag-item ${f.status}">
+    const isBio = isBioBetrieb(f.betrieb);
+    return `<div class="schlag-item ${f.status}" style="${isBio?'border-left:3px solid #16a34a':''}">
       <div class="schlag-info">
-        <div class="schlag-name">${f.name}</div>
-        <div class="schlag-detail">${f.fruchtart} · ${f.flaeche} ha</div>
+        <div class="schlag-name">${f.name}${isBio?bioBadge(true):''}</div>
+        <div class="schlag-detail">${f.fruchtart} · ${f.flaeche} ha${f.betrieb?' · '+f.betrieb:''}</div>
       </div>
       ${statusBadge}
       <div class="schlag-actions">${btnAktivieren}${btnFertig}${btnReset}</div>
@@ -1564,10 +1600,11 @@ function renderAdminSchlaegeListe() {
       : f.status==='abgeerntet'
       ? '<span class="badge badge-abgeerntet">FERTIG</span>'
       : '<span class="badge badge-inaktiv">INAKTIV</span>';
-    return `<div class="schlag-item ${f.status}">
+    const isBio = isBioBetrieb(f.betrieb);
+    return `<div class="schlag-item ${f.status}" style="${isBio?'border-left:3px solid #16a34a':''}">
       <div class="schlag-info">
-        <div class="schlag-name">${f.name}</div>
-        <div class="schlag-detail">${f.fruchtart} · ${f.flaeche} ha</div>
+        <div class="schlag-name">${f.name}${isBio?bioBadge(true):''}</div>
+        <div class="schlag-detail">${f.fruchtart} · ${f.flaeche} ha${f.betrieb?' · '+f.betrieb:''}</div>
       </div>
       ${statusBadge}
       <div class="schlag-actions">${btnAktivieren}${btnFertig}${btnReset}</div>
@@ -2771,6 +2808,46 @@ function filterSchlagNav(q) {
   }
 }
 
+
+
+// ─── VERMEHRUNGEN ───
+function getVermehrungenForFeld(feldId) {
+  return state.vermehrungen.filter(v => v.feld_id === feldId);
+}
+function isVermehrungsFuhre(f) {
+  return !!f.sorte;
+}
+function getFuhreKulturKey(f) {
+  if(f.sorte) return 'VERMEHRUNG:' + f.sorte;
+  return f.fruchtart || 'Unbekannt';
+}
+
+// ─── BIO / KONVENTIONELL TRENNUNG ───
+const BIO_BETRIEBE = ['Niko von Reiche', 'Bernhard von Reiche', 'von Reiche GbR', 'ABB'];
+
+function isBioBetrieb(betrieb) {
+  return BIO_BETRIEBE.some(b => (betrieb||'').includes(b));
+}
+function isBioFeld(feldId) {
+  const feld = getFeld(feldId);
+  return isBioBetrieb(feld.betrieb);
+}
+function isBioFuhre(f) {
+  return isBioFeld(f.feldId);
+}
+function getSiloBioStatus(siloId) {
+  const fuhren = state.fuhren.filter(f => f.siloId === siloId && f.status === 'fertig');
+  if(!fuhren.length) return null;
+  const bioCount = fuhren.filter(f => isBioFuhre(f)).length;
+  if(bioCount === fuhren.length) return 'bio';
+  if(bioCount === 0) return 'konventionell';
+  return 'gemischt';
+}
+function bioBadge(inline=false) {
+  if(inline) return '<span style="display:inline-block;background:#166534;color:#bbf7d0;font-size:9px;font-weight:800;padding:1px 5px;border-radius:4px;letter-spacing:0.5px;vertical-align:middle;margin-left:4px">BIO</span>';
+  return '<span style="display:inline-block;background:#166534;color:#bbf7d0;font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;letter-spacing:1px">🌿 BIO</span>';
+}
+
 // ─── FRUCHTART-FARBEN (global) ───
 const fruchtFarbe = {
   'Winterweichweizen': {bg:'rgba(196,160,60,0.18)', border:'rgba(196,160,60,0.5)', dot:'#c8a84b'},
@@ -2826,7 +2903,8 @@ function renderSiloManagement() {
       .replace('Winterweichweizen','W.Weizen').replace('Wintergerste','W.Gerste')
       .replace('Winterraps','W.Raps').replace('Wintertriticale','W.Triticale')
       .replace('Winterdurum','W.Durum').replace('Winter','W.').replace('Sommer','So.') : '';
-    const strokeC = hasFeuchteWarn ? '#ef4444' : (active ? 'var(--gold)' : '#2a422a');
+    const siloIstBio = getSiloBioStatus(s.id) === 'bio';
+    const strokeC = hasFeuchteWarn ? '#ef4444' : active ? 'var(--gold)' : siloIstBio ? '#16a34a' : '#2a422a';
     const strokeW = active ? 4 : 2;
     const fillBg = active ? '#1e321e' : '#161e16';
     const pctText = pct>0 ? `<text x="${sz/2}" y="${sz/2+22}" text-anchor="middle" fill="#5a7a5a" font-size="${isBig?11:9}" font-family="monospace">${pct.toFixed(0)}%</text>` : '';
@@ -3066,6 +3144,19 @@ async function dropFuhreOnSilo(event, siloId) {
   const silo = state.silos.find(s=>s.id===siloId);
   if(!silo && siloId !== 'HOF') return;
 
+  // ── BIO/KONVENTIONELL SPERRE ──
+  if(siloId !== 'HOF') {
+    const siloStatus = getSiloBioStatus(siloId);
+    const fuhreIstBio = isBioFuhre(f);
+    if(siloStatus === 'bio' && !fuhreIstBio) {
+      showToast('⛔ Silo '+siloId+' enthält BIO-Ware – konventionelle Fuhre nicht erlaubt!', 'error');
+      return;
+    }
+    if(siloStatus === 'konventionell' && fuhreIstBio) {
+      showToast('⛔ Silo '+siloId+' enthält konventionelle Ware – BIO-Fuhre nicht erlaubt!', 'error');
+      return;
+    }
+  }
   // Hof: keine Kultur-Prüfung, gemischtes Lager erlaubt
   if(siloId === 'HOF') {
     f.siloId = 'HOF';
@@ -3315,14 +3406,14 @@ function lieferungPDF(id) {
     +'<table class="meta"><tr><td>Nummer</td><td>'+l.nr+'</td></tr>'
     +'<tr><td>Datum</td><td>'+datum+'</td></tr>'
     +'<tr><td>Uhrzeit</td><td>'+uhrzeit+' Uhr</td></tr>'
-    +(l.kontrakt?'<tr><td>Kontrakt</td><td>'+l.kontrakt+'</td></tr>':'')
+    +(l.kontrakt?'<tr><td>Kontrakt</td><td>'+l.kontrakt+'</td></tr>':'')+(isBioLief?'<tr><td>Öko-Zertifikat</td><td style="color:#16a34a;font-weight:700">DE-ÖKO-006</td></tr>':'')
     +'</table></div></div>'
     +'<div class="kaeufer">'+l.kaeufer_name+'</div>'
     +(l.kaeufer_adresse?'<div style="font-size:11px;color:#444;margin-bottom:16px">'+l.kaeufer_adresse+'</div>':'<div style="margin-bottom:16px"></div>')
     +'<table class="main"><thead><tr>'
     +'<th>Artikel</th><th>Einheit</th><th>Leergewicht</th><th>Vollgewicht</th><th style="text-align:right">Nettomenge</th>'
     +'</tr></thead><tbody>'
-    +'<tr><td style="font-weight:600">'+l.fruchtart+'</td><td>t</td><td>'+leer+'</td><td>'+voll+'</td><td style="text-align:right;font-weight:700;font-size:13px">'+netto+'</td></tr>'
+    +'<tr><td style="font-weight:600">'+l.fruchtart+(isBioLief?' <span style="color:#16a34a;font-size:10px;font-weight:800;border:1px solid #16a34a;padding:1px 4px;border-radius:3px">BIO</span>':'')+'</td><td>t</td><td>'+leer+'</td><td>'+voll+'</td><td style="text-align:right;font-weight:700;font-size:13px">'+netto+'</td></tr>'
     +'<tr style="height:28px"><td colspan="5"></td></tr>'
     +'<tr style="height:28px"><td colspan="5"></td></tr>'
     +'</tbody><tfoot><tr class="total"><td colspan="4">Gesamt Netto</td><td style="text-align:right">'+netto+'</td></tr></tfoot></table>'
