@@ -2530,18 +2530,18 @@ let _navHighlight = null;
 function renderAbfahrerSchlagsuche() {
   const felder = state.felder.filter(f=>f.status==='aktiv').sort((a,b)=>a.name.localeCompare(b.name,'de'));
   document.getElementById('atab').innerHTML =
-    '<div style="display:flex;height:calc(100vh - 140px);gap:0;overflow:hidden">'
-    // Left: search + list
-    +'<div style="width:300px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border)">'
-    +'<div style="padding:10px 12px;border-bottom:1px solid var(--border)">'
+    '<div style="display:flex;flex-direction:column;height:calc(100vh - 140px);overflow:hidden">'
+    // Top: search
+    +'<div style="padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0">'
     +'<input type="text" id="schlag-nav-search" class="search-input" style="margin:0"'
     +' placeholder="Schlagname oder Fruchtart…" oninput="filterSchlagNav(this.value)" autocomplete="off">'
     +'</div>'
-    +'<div id="schlag-nav-liste" style="flex:1;overflow-y:auto">'
+    // Middle: list (scrollable, fixed height)
+    +'<div id="schlag-nav-liste" style="overflow-y:auto;max-height:240px;flex-shrink:0;border-bottom:1px solid var(--border)">'
     +felder.map(f=>schlagNavItem(f)).join('')
-    +'</div></div>'
-    // Right: map
-    +'<div style="flex:1;position:relative">'
+    +'</div>'
+    // Bottom: map fills remaining space
+    +'<div style="flex:1;position:relative;min-height:200px">'
     +'<div id="nav-map-container" style="width:100%;height:100%"></div>'
     +'</div>'
     +'</div>';
