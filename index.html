@@ -604,7 +604,12 @@ async function bootApp() {
           else if(adminTab === 'fortschritt') renderAdminFortschritt();
           else if(adminTab === 'fuhren') renderAdminFuhren();
         }
-        else if(role === 'drescher' && dTab === 'meine') renderDrescher();
+        else if(role === 'drescher') {
+          const vorher = state.fuhren.filter(f=>f.drescherId===state.currentUser.id&&f.status==='offen').length;
+          renderDrescher();
+          const nachher = state.fuhren.filter(f=>f.drescherId===state.currentUser.id&&f.status==='offen').length;
+          if(nachher < vorher) showToast('✓ Abfahrer hat Fuhre abgeladen – Abfahrer wieder frei!');
+        }
         else if(role === 'abfahrer') {
           const vorher = state.fuhren.filter(f=>f.abfahrerId===state.currentUser.id&&f.status==='offen').length;
           renderAbfahrer();
