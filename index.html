@@ -428,6 +428,8 @@ const db = {
       fallzahl: f.fallzahl ? parseFloat(f.fallzahl) : null,
       protein: f.protein ? parseFloat(f.protein) : null,
       hlGewicht: f.hl_gewicht ? parseFloat(f.hl_gewicht) : null,
+      gluten: f.gluten ? parseFloat(f.gluten) : null,
+      oelgehalt: f.oelgehalt ? parseFloat(f.oelgehalt) : null,
       zeit: f.zeit,
       verifiziert: f.verifiziert || false,
       verifiziertVon: f.verifiziert_von || null,
@@ -458,6 +460,8 @@ const db = {
     if(updates.fallzahl !== undefined) map.fallzahl = updates.fallzahl;
     if(updates.protein !== undefined) map.protein = updates.protein;
     if(updates.hlGewicht !== undefined) map.hl_gewicht = updates.hlGewicht;
+    if(updates.gluten !== undefined) map.gluten = updates.gluten;
+    if(updates.oelgehalt !== undefined) map.oelgehalt = updates.oelgehalt;
     if(updates.verifiziert !== undefined) map.verifiziert = updates.verifiziert;
     if(updates.verifiziertVon !== undefined) map.verifiziert_von = updates.verifiziertVon;
     if(updates.siloId !== undefined) map.silo_id = updates.siloId;
@@ -1069,12 +1073,11 @@ function renderAbfahrerOffen() {
         <div class="netto-val" id="netto-${f.id}">—</div>
         <div class="netto-unit">kg</div>
       </div>
-      <div class="section-label">Qualität</div>
-      <div class="gewicht-grid">
-        <div class="form-group"><label>Feuchte (%)</label><input type="number" id="feuchte-${f.id}" placeholder="14.5" step="0.1"></div>
-        <div class="form-group"><label>Fallzahl</label><input type="number" id="fallzahl-${f.id}" placeholder="300" step="1"></div>
-        <div class="form-group"><label>Protein (%)</label><input type="number" id="protein-${f.id}" placeholder="13.5" step="0.1"></div>
-        <div class="form-group"><label>HL-Gewicht</label><input type="number" id="hl-${f.id}" placeholder="78.0" step="0.1"></div>
+      <div class="section-label">Qualität <span style="font-size:10px;color:var(--text3);font-weight:400">– alle optional, fehlende Angaben werden abgefragt</span></div>
+      <div class="gewicht-grid" id="qual-grid-${f.id}">
+        ${(()=>{const qf=getQualitaetsfelder(f.fruchtart);return Object.entries(qf).map(([key,q])=>
+          `<div class="form-group"><label>${q.label}</label><input type="number" id="qual-${key}-${f.id}" placeholder="${q.ph}" step="${q.step}"></div>`
+        ).join('');})()}
       </div>
       <button class="btn btn-green btn-full" onclick="fuhreSpeichern(${f.id})">&#10003; Fuhre abschließen</button>
     </div>`).join('') :
@@ -1092,16 +1095,39 @@ function updNetto(fId) {
 async function fuhreSpeichern(fId) {
   const v=parseFloat(document.getElementById('voll-'+fId).value);
   const l=parseFloat(document.getElementById('leer-'+fId).value);
-  const feuchte=parseFloat(document.getElementById('feuchte-'+fId).value);
-  if(!v||!l||v<=l){alert('Bitte gültige Gewichte eingeben.');return;}
-  if(!feuchte){alert('Bitte Feuchte eingeben.');return;}
+  if(!v||!l||v<=l){alert('Bitte gültige Gewichte eingeben (Vollgew. > Leergew.).');return;}
+
   const f=state.fuhren.find(x=>x.id===fId);
+  if(!f) return;
+  const qf = getQualitaetsfelder(f.fruchtart);
+
+  // Qualitätswerte aus dynamischen Feldern lesen
+  const qualWerte = {};
+  for(const key of Object.keys(qf)) {
+    const el = document.getElementById('qual-'+key+'-'+fId);
+    const val = el ? parseFloat(el.value)||null : null;
+    qualWerte[key] = val;
+  }
+
+  // Fehlende Qualitätsfelder abfragen
+  const fehlende = Object.entries(qf)
+    .filter(([key]) => !qualWerte[key])
+    .map(([,q]) => q.label);
+
+  if(fehlende.length > 0) {
+    const fehlendStr = fehlende.join(', ');
+    if(!confirm(`Fehlende Angaben: ${fehlendStr}\n\nWirklich ohne ${fehlende.length>1?'diese Werte':'diesen Wert'} abschließen?`)) return;
+  }
+
   const updates = {
-    vollgewicht:v, leergewicht:l, feuchte,
-    fallzahl:parseFloat(document.getElementById('fallzahl-'+fId).value)||null,
-    protein:parseFloat(document.getElementById('protein-'+fId).value)||null,
-    hlGewicht:parseFloat(document.getElementById('hl-'+fId).value)||null,
-    status:'fertig'
+    vollgewicht: v,
+    leergewicht: l,
+    feuchte:   qualWerte.feuchte   || null,
+    protein:   qualWerte.protein   || null,
+    gluten:    qualWerte.gluten    || null,
+    hlGewicht: qualWerte.hl        || null,
+    oelgehalt: qualWerte.oelgehalt || null,
+    status:    'fertig'
   };
   Object.assign(f, updates);
   renderAbfahrer();
@@ -1171,6 +1197,10 @@ function renderAdmin() {
           <button class="sidebar-btn ${adminTab==='silos'?'active':''}" onclick="setAdminTab('silos')">
             <span class="sidebar-icon">🏭</span><span class="sidebar-label">Silomanagement</span>
           </button>
+          <div class="sidebar-section">System</div>
+          <button class="sidebar-btn ${adminTab==='erntejahr'?'active':''}" onclick="setAdminTab('erntejahr')">
+            <span class="sidebar-icon">🌱</span><span class="sidebar-label">Neues Erntejahr</span>
+          </button>
         </nav>
         <div id="admin-main">
           <div id="admin-main-inner">
@@ -1194,6 +1224,7 @@ function renderAdmin() {
   else if(adminTab==='fortschritt') renderAdminFortschritt();
   else if(adminTab==='nutzer') renderAdminNutzer();
   else if(adminTab==='karte') renderAdminKarte();
+  else if(adminTab==='erntejahr') renderNeuesErntejahr();
   else if(adminTab==='silos') {
     document.getElementById('admintab').innerHTML = '';
     showSiloOverlay();
@@ -1276,11 +1307,8 @@ function renderAdminSchlaege() {
         <div class="stat-box"><div class="stat-val" style="font-size:22px;color:var(--green)" id="s-abg"></div><div class="stat-label">Abgeerntet</div></div>
         <div class="stat-box"><div class="stat-val" style="font-size:22px;color:var(--text3)" id="s-inaktiv"></div><div class="stat-label">Inaktiv</div></div>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
-        <input type="text" id="schlag-search-input" class="search-input" style="flex:1;margin-bottom:0" placeholder="Suche nach Schlag oder Fruchtart…"
-          oninput="schlagSearchInput(this.value)">
-        <button class="btn btn-sm btn-outline" onclick="showImportDialog()" title="Excel oder KML importieren">📥 Import</button>
-      </div>
+      <input type="text" id="schlag-search-input" class="search-input" placeholder="Suche nach Schlag oder Fruchtart…"
+        oninput="schlagSearchInput(this.value)">
       <div id="schlag-filter-bar" class="filter-bar"></div>
       <div id="schlag-liste"></div>`;
   }
@@ -1512,16 +1540,20 @@ function renderAdminFuhren() {
   };
 
   document.getElementById('admintab').innerHTML = `
-      <div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--amber)">${offen.length}</div><div class="stat-label">offen</div></div>
-      <div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--gold2)">${pending.length}</div><div class="stat-label">zu prüfen</div></div>
-      <div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--green)">${verified.length}</div><div class="stat-label">bestätigt</div></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1;min-width:240px">
+        <div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--amber)">${offen.length}</div><div class="stat-label">offen</div></div>
+        <div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--gold2)">${pending.length}</div><div class="stat-label">zu prüfen</div></div>
+        <div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--green)">${verified.length}</div><div class="stat-label">bestätigt</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportTagesbericht()">📄 Tagesbericht</button>
+      </div>
     </div>
     ${pending.length ? `<div class="section-label" style="color:var(--gold2)">⚠ Zu bestätigen (${pending.length})</div>${pending.map(f=>fuhreRow(f,true)).join('')}` : ''}
     ${verified.length ? `<div class="section-label" style="margin-top:8px">✓ Bestätigt (${verified.length})</div>${verified.map(f=>fuhreRow(f,true)).join('')}` : ''}
-    ${offen.length ? `<div class="section-label" style="margin-top:8px;color:var(--amber)">⚠ Offene Fuhren (${offen.length})</div>${offen.map(offenRow).join('')}` : ''}
-    <div style="margin-top:16px">
-      <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ CSV Export</button>
-    </div>`;
+    ${offen.length ? `<div class="section-label" style="margin-top:8px;color:var(--amber)">⚠ Offene Fuhren (${offen.length})</div>${offen.map(offenRow).join('')}` : ''}`;
 }
 
 let _editOpenId = null;
@@ -2286,6 +2318,48 @@ async function hashPW(pw) {
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
+
+// ─── QUALITÄTSFELDER JE KULTUR ───
+function getQualitaetsfelder(fruchtart) {
+  const fa = (fruchtart||'').toLowerCase();
+  // Raps & Sonnenblumen
+  if(fa.includes('raps') || fa.includes('sonnenblume')) {
+    return {
+      feuchte:  {label:'Feuchte (%)',    ph:'8.5',   step:'0.1'},
+      oelgehalt:{label:'Ölgehalt (%)',   ph:'42.0',  step:'0.1'},
+      hl:       {label:'HL-Gewicht',     ph:'64.0',  step:'0.1'},
+    };
+  }
+  // Leguminosen (Erbsen, Soja, Bohnen)
+  if(fa.includes('erbse') || fa.includes('soja') || fa.includes('bohne')) {
+    return {
+      feuchte:  {label:'Feuchte (%)',    ph:'14.0',  step:'0.1'},
+      protein:  {label:'Protein (%)',    ph:'35.0',  step:'0.1'},
+      oelgehalt:{label:'Ölgehalt (%)',   ph:'20.0',  step:'0.1'},
+    };
+  }
+  // Mais, Rüben, Sonstiges
+  if(fa.includes('mais') || fa.includes('rübe') || fa.includes('ruebe')) {
+    return {
+      feuchte:  {label:'Feuchte (%)',    ph:'30.0',  step:'0.1'},
+    };
+  }
+  // Getreide (Standard): Weizen, Gerste, Roggen, Triticale, Durum
+  return {
+    feuchte:  {label:'Feuchte (%)',    ph:'14.5',  step:'0.1'},
+    protein:  {label:'Protein (%)',    ph:'13.5',  step:'0.1'},
+    gluten:   {label:'Gluten (%)',     ph:'28.0',  step:'0.1'},
+    hl:       {label:'HL-Gewicht',     ph:'78.0',  step:'0.1'},
+  };
+}
+
+function qualitaetsFehlende(felder, werte) {
+  // Gibt Liste fehlender (nicht eingegebener) Felder zurück
+  return Object.entries(felder)
+    .filter(([key]) => !werte[key])
+    .map(([,f]) => f.label);
+}
+
 // ─── FRUCHTART-FARBEN (global) ───
 const fruchtFarbe = {
   'Winterweichweizen': {bg:'rgba(196,160,60,0.18)', border:'rgba(196,160,60,0.5)', dot:'#c8a84b'},
@@ -2640,191 +2714,397 @@ function renderSilomeister() {
 
 // ─── STAMMDATEN IMPORT ───
 
-function showImportDialog() {
-  const modal = document.createElement('div');
-  modal.id = 'import-modal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
-  modal.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;width:100%;max-width:480px;box-shadow:var(--shadow)">
-      <div style="font-family:var(--serif);font-size:20px;color:var(--gold2);margin-bottom:6px">📥 Stammdaten importieren</div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:20px">Excel (Flächenübersicht) oder KML-Dateien (Schlaggrenzen)</div>
 
-      <div style="margin-bottom:16px">
-        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">1. Excel-Datei (Schläge + Fruchtarten)</div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Erwartet: Spalten BEZEICHNUNG, FLAECHE, FRUCHTART wie in der Flächenübersicht</div>
-        <label style="display:block;background:var(--bg2);border:1px dashed var(--border);border-radius:8px;padding:12px;text-align:center;cursor:pointer;font-size:12px;color:var(--text3)">
-          📊 Excel auswählen (.xlsx)
-          <input type="file" id="import-excel" accept=".xlsx,.xls" style="display:none" onchange="handleExcelImport(this)">
-        </label>
-        <div id="excel-status" style="font-size:11px;margin-top:6px;color:var(--text3)"></div>
+// ─── NEUES ERNTEJAHR ───
+let _erntejahrStep = 0; // 0=warn, 1=csv-done, 2=ready
+
+function renderNeuesErntejahr() {
+  document.getElementById('admintab').innerHTML = `
+    <div class="card" style="border-color:var(--amber);max-width:640px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <span style="font-size:32px">🌱</span>
+        <div>
+          <div style="font-family:var(--serif);font-size:20px;color:var(--gold2)">Neues Erntejahr anlegen</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">Stammdaten aktualisieren für die neue Saison</div>
+        </div>
       </div>
 
-      <div style="margin-bottom:20px">
-        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">2. KML-Dateien (Schlaggrenzen)</div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Mehrere KML-Dateien gleichzeitig auswählbar (eine pro Betrieb)</div>
-        <label style="display:block;background:var(--bg2);border:1px dashed var(--border);border-radius:8px;padding:12px;text-align:center;cursor:pointer;font-size:12px;color:var(--text3)">
-          🗺 KML-Dateien auswählen
-          <input type="file" id="import-kml" accept=".kml" multiple style="display:none" onchange="handleKMLImport(this)">
-        </label>
-        <div id="kml-status" style="font-size:11px;margin-top:6px;color:var(--text3)"></div>
+      <div style="background:#2a1a00;border:1px solid var(--amber);border-radius:10px;padding:16px;margin-bottom:20px">
+        <div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:8px">⚠ Wichtiger Hinweis</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.7">
+          Dieser Vorgang setzt <strong style="color:#fff">alle 156 Schläge</strong> auf "inaktiv" zurück
+          und aktualisiert Flächen und Fruchtarten aus der neuen Excel-Datei.<br>
+          <strong style="color:#fff">Alle Fuhren und Silo-Zuordnungen bleiben erhalten</strong> – sie werden nicht gelöscht.<br>
+          Dieser Vorgang kann <strong style="color:var(--amber)">nicht rückgängig gemacht werden.</strong>
+        </div>
       </div>
 
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-modal').remove()">Schließen</button>
+      <!-- Schritt 1: CSV herunterladen -->
+      <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px;background:var(--bg2)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="width:28px;height:28px;border-radius:50%;background:${_erntejahrStep>=1?'var(--green)':'var(--amber)'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0">${_erntejahrStep>=1?'✓':'1'}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">Aktuellen Fuhren-Export herunterladen</div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:12px;padding-left:38px">
+          Lade zuerst die vollständige Liste aller bisherigen Fuhren herunter und speichere sie sicher ab. Das ist deine Datensicherung.
+        </div>
+        <div style="padding-left:38px">
+          <button class="btn btn-primary" onclick="erntejahrDownloadCSV()" ${_erntejahrStep>=1?'style="opacity:.5"':''}>
+            ⬇ Fuhren-CSV jetzt herunterladen
+          </button>
+          ${_erntejahrStep>=1?'<span style="font-size:12px;color:var(--green);margin-left:10px">✓ Heruntergeladen</span>':''}
+        </div>
       </div>
+
+      <!-- Schritt 2: Excel importieren -->
+      <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px;background:var(--bg2);opacity:${_erntejahrStep>=1?1:0.4};pointer-events:${_erntejahrStep>=1?'auto':'none'}">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="width:28px;height:28px;border-radius:50%;background:${_erntejahrStep>=2?'var(--green)':_erntejahrStep>=1?'var(--blue)':'var(--bg3)'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0">${_erntejahrStep>=2?'✓':'2'}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">Neue Flächenübersicht importieren (Excel)</div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:12px;padding-left:38px">
+          Lade die Flächenübersicht der neuen Saison hoch. Die App liest Schlagname, Fläche und Fruchtart automatisch aus.
+        </div>
+        <div style="padding-left:38px">
+          <label style="display:inline-block;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:12px;color:var(--text2)">
+            📊 Excel-Datei auswählen (.xlsx)
+            <input type="file" id="import-excel" accept=".xlsx,.xls" style="display:none" onchange="erntejahrExcelImport(this)">
+          </label>
+          <div id="excel-status" style="font-size:11px;margin-top:8px;color:var(--text3)"></div>
+        </div>
+      </div>
+
+      <!-- Schritt 3: KML importieren -->
+      <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:20px;background:var(--bg2);opacity:${_erntejahrStep>=2?1:0.4};pointer-events:${_erntejahrStep>=2?'auto':'none'}">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="width:28px;height:28px;border-radius:50%;background:${_erntejahrStep>=3?'var(--green)':_erntejahrStep>=2?'var(--blue)':'var(--bg3)'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0">${_erntejahrStep>=3?'✓':'3'}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">Neue Schlaggrenzen importieren (KML) <span style="font-size:11px;color:var(--text3);font-weight:400">– optional</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:12px;padding-left:38px">
+          Falls sich Schlaggrenzen geändert haben, lade die neuen KML-Dateien hoch. Mehrere Dateien gleichzeitig möglich.
+        </div>
+        <div style="padding-left:38px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <label style="display:inline-block;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:12px;color:var(--text2)">
+            🗺 KML-Dateien auswählen
+            <input type="file" id="import-kml" accept=".kml" multiple style="display:none" onchange="erntejahrKMLImport(this)">
+          </label>
+          <button class="btn btn-sm btn-outline" onclick="_erntejahrStep=3;renderNeuesErntejahr()">Überspringen →</button>
+          <div id="kml-status" style="font-size:11px;margin-top:8px;color:var(--text3);width:100%"></div>
+        </div>
+      </div>
+
+      ${_erntejahrStep>=3?`
+      <div style="background:#0a1f0a;border:1px solid var(--green);border-radius:10px;padding:16px;text-align:center">
+        <div style="font-size:14px;color:var(--green);font-weight:600;margin-bottom:4px">✓ Neues Erntejahr ist bereit</div>
+        <div style="font-size:12px;color:var(--text3)">Alle Schläge wurden aktualisiert und auf inaktiv gesetzt. Du kannst jetzt mit der Erntekampagne beginnen.</div>
+      </div>`:''}
     </div>`;
-  document.body.appendChild(modal);
 }
 
-async function handleExcelImport(input) {
+function erntejahrDownloadCSV() {
+  exportCSV();
+  _erntejahrStep = 1;
+  renderNeuesErntejahr();
+}
+
+async function erntejahrExcelImport(input) {
   const file = input.files[0];
   if(!file) return;
   const statusEl = document.getElementById('excel-status');
   statusEl.textContent = 'Lese Datei…';
   statusEl.style.color = 'var(--text3)';
-
   try {
-    // Load SheetJS dynamically
     if(!window.XLSX) {
       await new Promise((res,rej) => {
         const s = document.createElement('script');
         s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-        s.onload = res; s.onerror = rej;
-        document.head.appendChild(s);
+        s.onload=res; s.onerror=rej; document.head.appendChild(s);
       });
     }
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, {type:'array'});
-    // Try to find the right sheet (first non-empty sheet)
-    let ws = null, sheetName = '';
+    let ws=null, sheetName='';
     for(const name of wb.SheetNames) {
-      const s = wb.Sheets[name];
-      const range = XLSX.utils.decode_range(s['!ref']||'A1:A1');
-      if(range.e.r > 2) { ws = s; sheetName = name; break; }
+      const s=wb.Sheets[name];
+      const range=XLSX.utils.decode_range(s['!ref']||'A1:A1');
+      if(range.e.r>2){ws=s;sheetName=name;break;}
     }
     if(!ws) throw new Error('Kein passendes Blatt gefunden');
-    const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
-    statusEl.textContent = `${rows.length} Zeilen in Blatt "${sheetName}" gefunden. Verarbeite…`;
+    const rows = XLSX.utils.sheet_to_json(ws,{defval:''});
+    statusEl.textContent = `${rows.length} Zeilen in "${sheetName}" gefunden…`;
 
-    // Map columns flexibly
-    const mapped = [];
-    for(const row of rows) {
-      const keys = Object.keys(row).map(k=>k.toString().toUpperCase());
-      const get = (candidates) => {
-        for(const c of candidates) {
-          const k = Object.keys(row).find(k=>k.toString().toUpperCase().includes(c));
-          if(k && row[k]) return row[k].toString().trim();
-        }
-        return '';
-      };
-      const name = get(['BEZEICHNUNG','NAME','SCHLAG']);
-      const flaeche = parseFloat(get(['FLAECHE','FLÄCHE','AKTFLAECHE','AKTFLÄCHE']).replace(',','.'));
-      const fruchtart = get(['FRUCHTART','NUTZUNG','KULTUR','BESCHREIBUNG']);
-      const nutzcode = parseInt(get(['NUTZ_CODE','NUTZCODE','CODE'])||'0');
-      // Filter: only harvest-relevant codes
-      const ernteCode = [112,113,115,116,131,156,171,210,311,320,330,603];
-      if(name && flaeche > 0 && fruchtart && (ernteCode.includes(nutzcode)||nutzcode===0)) {
-        mapped.push({name, flaeche: Math.round(flaeche*10000)/10000, fruchtart});
-      }
+    const norm = s => s.toString().toLowerCase().replace(/[^a-z0-9]/g,'');
+    const get = (row,candidates) => {
+      for(const c of candidates){const k=Object.keys(row).find(k=>norm(k).includes(norm(c)));if(k&&row[k])return row[k].toString().trim();}
+      return '';
+    };
+    const ernteCode=[112,113,115,116,131,156,171,210,311,320,330,603];
+    const mapped=[];
+    for(const row of rows){
+      const name=get(row,['bezeichnung','name','schlag']);
+      const flaeche=parseFloat(get(row,['aktflaeche','aktfläche','flaeche','fläche']).replace(',','.'));
+      const fruchtart=get(row,['beschreibung','fruchtart','nutzung','kultur']);
+      const nutzcode=parseInt(get(row,['nutz_code','nutzcode','code'])||'0');
+      if(name&&flaeche>0&&fruchtart&&(ernteCode.includes(nutzcode)||nutzcode===0))
+        mapped.push({name,flaeche:Math.round(flaeche*10000)/10000,fruchtart});
     }
+    if(mapped.length===0) throw new Error('Keine Schläge gefunden – Spalten BEZEICHNUNG, FLAECHE, FRUCHTART vorhanden?');
+    statusEl.textContent = `${mapped.length} Schläge gefunden. Aktualisiere Datenbank…`;
 
-    if(mapped.length === 0) throw new Error('Keine ernterelevanten Schläge gefunden. Spalten BEZEICHNUNG, FLAECHE, FRUCHTART vorhanden?');
-
-    // Match existing felder by name, update or add
-    let updated = 0, added = 0, skipped = 0;
-    const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g,'');
-
-    for(const m of mapped) {
-      const existing = state.felder.find(f => norm(f.name)===norm(m.name));
-      if(existing) {
-        // Update
-        existing.flaeche = m.flaeche;
-        existing.fruchtart = m.fruchtart;
-        existing.status = 'inaktiv'; // reset for new season
-        try { await sb.from('felder').update({flaeche:m.flaeche, fruchtart:m.fruchtart, status:'inaktiv'}).eq('id',existing.id); updated++; }
-        catch(e) { skipped++; }
+    const normName = s => s.toLowerCase().replace(/[äöüß]/g,c=>({ä:'ae',ö:'oe',ü:'ue',ß:'ss'}[c]||c)).replace(/[^a-z0-9]/g,'');
+    let updated=0,added=0,errors=0;
+    for(const m of mapped){
+      const existing=state.felder.find(f=>normName(f.name)===normName(m.name));
+      if(existing){
+        existing.flaeche=m.flaeche; existing.fruchtart=m.fruchtart; existing.status='inaktiv';
+        try{await sb.from('felder').update({flaeche:m.flaeche,fruchtart:m.fruchtart,status:'inaktiv'}).eq('id',existing.id);updated++;}
+        catch(e){errors++;}
       } else {
-        // Insert new
-        try {
-          const {data} = await sb.from('felder').insert({name:m.name, flaeche:m.flaeche, fruchtart:m.fruchtart, status:'inaktiv'}).select().single();
-          if(data) { state.felder.push({id:data.id, ...m, status:'inaktiv'}); added++; }
-        } catch(e) { skipped++; }
+        try{
+          const{data}=await sb.from('felder').insert({name:m.name,flaeche:m.flaeche,fruchtart:m.fruchtart,status:'inaktiv'}).select().single();
+          if(data){state.felder.push({id:data.id,...m,status:'inaktiv'});added++;}
+        }catch(e){errors++;}
       }
     }
-    statusEl.style.color = 'var(--green)';
-    statusEl.textContent = `✓ ${updated} aktualisiert, ${added} neu angelegt${skipped?' ('+skipped+' Fehler)':''}`;
-    renderAdminSchlaegeListe();
+    statusEl.style.color='var(--green)';
+    statusEl.textContent=`✓ ${updated} aktualisiert · ${added} neu angelegt${errors?' · '+errors+' Fehler':''}`;
+    _erntejahrStep=2;
+    renderNeuesErntejahr();
   } catch(e) {
-    statusEl.style.color = 'var(--red)';
-    statusEl.textContent = '⚠ ' + e.message;
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='⚠ '+e.message;
   }
 }
 
-async function handleKMLImport(input) {
-  const files = Array.from(input.files);
+async function erntejahrKMLImport(input) {
+  const files=Array.from(input.files);
   if(!files.length) return;
-  const statusEl = document.getElementById('kml-status');
-  statusEl.textContent = `${files.length} KML-Dateien werden verarbeitet…`;
-  statusEl.style.color = 'var(--text3)';
-
-  const norm = s => {
-    const nfkd = s.normalize('NFKD');
-    return nfkd.replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9/]/g,'');
-  };
-  const consonants = s => norm(s).replace(/[aeiou]/g,'');
-
-  let matched = 0, skipped = 0;
-  const parser = new DOMParser();
-
-  for(const file of files) {
-    const betrieb = file.name.replace('Parzellen_','').replace('.kml','').replace(/_/g,' ');
-    const text = await file.text();
-    const doc = parser.parseFromString(text, 'text/xml');
-    const pms = doc.querySelectorAll('Placemark');
-
-    for(const pm of pms) {
-      const name = pm.querySelector('name')?.textContent?.trim()||'';
-      const coordsEl = pm.querySelector('outerBoundaryIs coordinates, outerBoundaryIs > LinearRing > coordinates');
-      if(!name || !coordsEl) continue;
-
-      const outer = coordsEl.textContent.trim().split(/\s+/).map(pt=>{
-        const p = pt.split(',');
-        return p.length>=2 ? [Math.round(parseFloat(p[1])*100000)/100000, Math.round(parseFloat(p[0])*100000)/100000] : null;
-      }).filter(Boolean);
-      if(outer.length < 3) continue;
-
-      const holes = [];
+  const statusEl=document.getElementById('kml-status');
+  statusEl.textContent=`${files.length} Dateien werden verarbeitet…`;
+  statusEl.style.color='var(--text3)';
+  const norm=s=>{const n=s.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9/]/g,'');return n;};
+  const cons=s=>norm(s).replace(/[aeiou]/g,'');
+  let matched=0,skipped=0;
+  const parser=new DOMParser();
+  for(const file of files){
+    const betrieb=file.name.replace('Parzellen_','').replace('.kml','').replace(/_/g,' ');
+    const doc=parser.parseFromString(await file.text(),'text/xml');
+    for(const pm of doc.querySelectorAll('Placemark')){
+      const name=pm.querySelector('name')?.textContent?.trim()||'';
+      const coordsEl=pm.querySelector('outerBoundaryIs coordinates');
+      if(!name||!coordsEl) continue;
+      const outer=coordsEl.textContent.trim().split(/\s+/).map(pt=>{const p=pt.split(',');return p.length>=2?[Math.round(parseFloat(p[1])*100000)/100000,Math.round(parseFloat(p[0])*100000)/100000]:null;}).filter(Boolean);
+      if(outer.length<3) continue;
+      const holes=[];
       pm.querySelectorAll('innerBoundaryIs coordinates').forEach(el=>{
-        const h = el.textContent.trim().split(/\s+/).map(pt=>{
-          const p = pt.split(',');
-          return p.length>=2 ? [Math.round(parseFloat(p[1])*100000)/100000, Math.round(parseFloat(p[0])*100000)/100000] : null;
-        }).filter(Boolean);
-        if(h.length >= 3) holes.push(h);
+        const h=el.textContent.trim().split(/\s+/).map(pt=>{const p=pt.split(',');return p.length>=2?[Math.round(parseFloat(p[1])*100000)/100000,Math.round(parseFloat(p[0])*100000)/100000]:null;}).filter(Boolean);
+        if(h.length>=3)holes.push(h);
       });
-
-      // Match to existing felder
-      const ck = consonants(name);
-      const feld = state.felder.find(f => consonants(f.name)===ck) ||
-                   state.felder.find(f => norm(f.name)===norm(name));
-      if(!feld) { skipped++; continue; }
-
-      // Update state.shapes
-      const existing = state.shapes.find(s=>s.feldId===feld.id);
-      if(existing) { existing.outer=outer; existing.holes=holes; existing.betrieb=betrieb; }
-      else state.shapes.push({feldId:feld.id, betrieb, outer, holes});
-
-      // Persist to DB
-      try { await db.upsertShape(feld.id, betrieb, outer, holes); matched++; }
-      catch(e) { skipped++; }
+      const feld=state.felder.find(f=>cons(f.name)===cons(name))||state.felder.find(f=>norm(f.name)===norm(name));
+      if(!feld){skipped++;continue;}
+      const ex=state.shapes.find(s=>s.feldId===feld.id);
+      if(ex){ex.outer=outer;ex.holes=holes;ex.betrieb=betrieb;}
+      else state.shapes.push({feldId:feld.id,betrieb,outer,holes});
+      try{await db.upsertShape(feld.id,betrieb,outer,holes);matched++;}catch(e){skipped++;}
     }
   }
+  if(_mapInstance){_mapInstance.remove();_mapInstance=null;_schlagLayers={};}
+  if(_drescherMap){_drescherMap.remove();_drescherMap=null;}
+  statusEl.style.color=matched>0?'var(--green)':'var(--amber)';
+  statusEl.textContent=`✓ ${matched} Schläge aktualisiert${skipped?' · '+skipped+' nicht gefunden':''}`;
+  _erntejahrStep=3;
+  renderNeuesErntejahr();
+}
 
-  // Refresh map if open
-  if(_mapInstance) { _mapInstance.remove(); _mapInstance=null; _schlagLayers={}; }
-  if(_drescherMap) { _drescherMap.remove(); _drescherMap=null; }
 
-  statusEl.style.color = matched>0?'var(--green)':'var(--red)';
-  statusEl.textContent = `✓ ${matched} Schläge gematcht und gespeichert${skipped?' · '+skipped+' nicht gefunden':''}`;
+
+// ─── TAGESBERICHT PDF ───
+function exportTagesbericht() {
+  const heute = new Date();
+  const datumStr = heute.toLocaleDateString('de-DE', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  const datumKurz = heute.toLocaleDateString('de-DE');
+
+  // ── Daten aufbereiten ──
+  const fertig = state.fuhren.filter(f=>f.status==='fertig');
+  const heuteFuhren = fertig.filter(f=>{
+    const d = new Date(f.zeit);
+    return d.toLocaleDateString('de-DE') === datumKurz;
+  });
+  const gesamtHa = state.felder.reduce((s,f)=>s+f.flaeche,0);
+  const abgHa    = state.felder.filter(f=>f.status==='abgeerntet').reduce((s,f)=>s+f.flaeche,0);
+  const aktivHa  = state.felder.filter(f=>f.status==='aktiv').reduce((s,f)=>s+f.flaeche,0);
+  const gesamtT  = fertig.reduce((s,f)=>s+(netto(f)||0),0)/1000;
+
+  // ── Kulturen-Statistik (gesamt) ──
+  const kulturen = {};
+  state.felder.forEach(f=>{
+    if(!kulturen[f.fruchtart]) kulturen[f.fruchtart]={ha_gesamt:0,ha_abg:0,ha_aktiv:0,kg:0,fuhren:[],feuchten:[],proteine:[],hls:[]};
+    kulturen[f.fruchtart].ha_gesamt+=f.flaeche;
+    if(f.status==='abgeerntet') kulturen[f.fruchtart].ha_abg+=f.flaeche;
+    if(f.status==='aktiv') kulturen[f.fruchtart].ha_aktiv+=f.flaeche;
+  });
+  fertig.forEach(f=>{
+    const fa=f.fruchtart||'Unbekannt';
+    if(!kulturen[fa]) kulturen[fa]={ha_gesamt:0,ha_abg:0,ha_aktiv:0,kg:0,fuhren:[],feuchten:[],proteine:[],hls:[]};
+    kulturen[fa].kg+=(netto(f)||0);
+    kulturen[fa].fuhren.push(f);
+    if(f.feuchte) kulturen[fa].feuchten.push(f.feuchte);
+    if(f.protein) kulturen[fa].proteine.push(f.protein);
+    if(f.hlGewicht) kulturen[fa].hls.push(f.hlGewicht);
+  });
+
+  const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : '–';
+
+  // ── Heute abgeschlossene Schläge ──
+  const heuteSchlaegeIds = [...new Set(heuteFuhren.map(f=>f.feldId))];
+  const heuteSchlaege = state.felder.filter(f=>
+    f.status==='abgeerntet' && heuteSchlaegeIds.includes(f.id)
+  );
+
+  // ── HTML für Print ──
+  const kulturRows = Object.entries(kulturen)
+    .filter(([,k])=>k.kg>0||k.ha_abg>0)
+    .sort((a,b)=>b[1].kg-a[1].kg)
+    .map(([fa,k])=>{
+      const pct = k.ha_gesamt>0?(k.ha_abg/k.ha_gesamt*100):0;
+      const dtHa = k.ha_abg>0?(k.kg/100/k.ha_abg).toFixed(1):'–';
+      const ha_offen = Math.max(0,k.ha_gesamt-k.ha_abg-k.ha_aktiv);
+      return `<tr>
+        <td>${fa}</td>
+        <td class="num">${k.ha_gesamt.toFixed(1)}</td>
+        <td class="num green">${k.ha_abg.toFixed(1)}</td>
+        <td class="num">${ha_offen.toFixed(1)}</td>
+        <td class="num bold">${(k.kg/1000).toFixed(1)}</td>
+        <td class="num">${dtHa}</td>
+        <td class="num">${avg(k.feuchten)}</td>
+        <td class="num">${avg(k.proteine)}</td>
+        <td class="num">${avg(k.hls)}</td>
+        <td class="num">${pct.toFixed(0)}%</td>
+      </tr>`;
+    }).join('');
+
+  const schlagRows = heuteSchlaege.length ? heuteSchlaege.map(f=>{
+    const fuhren = fertig.filter(x=>x.feldId===f.id);
+    const totalKg = fuhren.reduce((s,x)=>s+(netto(x)||0),0);
+    const avgF = avg(fuhren.filter(x=>x.feuchte).map(x=>x.feuchte));
+    const avgP = avg(fuhren.filter(x=>x.protein).map(x=>x.protein));
+    return `<tr>
+      <td>${f.name}</td>
+      <td>${f.fruchtart}</td>
+      <td class="num">${f.flaeche.toFixed(2)}</td>
+      <td class="num bold">${(totalKg/1000).toFixed(2)}</td>
+      <td class="num">${totalKg>0&&f.flaeche>0?(totalKg/100/f.flaeche).toFixed(1):'–'}</td>
+      <td class="num">${fuhren.length}</td>
+      <td class="num">${avgF}</td>
+      <td class="num">${avgP}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="8" style="text-align:center;color:#888;padding:16px">Keine Schläge heute abgeschlossen</td></tr>';
+
+  const heuteFuhrenRows = heuteFuhren.sort((a,b)=>new Date(a.zeit)-new Date(b.zeit)).map(f=>{
+    const n=netto(f);
+    return `<tr>
+      <td>${f.nr}</td>
+      <td>${new Date(f.zeit).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td>${getFeld(f.feldId).name}</td>
+      <td>${f.fruchtart}</td>
+      <td>${getUser(f.drescherId).name}</td>
+      <td>${getUser(f.abfahrerId).name}</td>
+      <td class="num bold">${n?(n/1000).toFixed(2):'–'}</td>
+      <td class="num">${f.feuchte??'–'}</td>
+      <td class="num">${f.protein??'–'}</td>
+      <td class="num">${f.hlGewicht??'–'}</td>
+      <td>${f.siloId||'–'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="11" style="text-align:center;color:#888;padding:16px">Keine Fuhren heute</td></tr>';
+
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html lang="de"><head>
+  <meta charset="UTF-8">
+  <title>Ernte 2026 – Tagesbericht ${datumKurz}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1a1a1a; background: #fff; padding: 20px 24px; }
+    h1 { font-size: 20px; font-weight: 700; color: #1a3a1a; margin-bottom: 2px; }
+    .subtitle { font-size: 12px; color: #555; margin-bottom: 20px; }
+    h2 { font-size: 13px; font-weight: 700; color: #1a3a1a; margin: 20px 0 8px; border-bottom: 2px solid #2d6a2d; padding-bottom: 4px; }
+    .kacheln { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; margin-bottom: 20px; }
+    .kachel { background: #f4f9f4; border: 1px solid #c8e0c8; border-radius: 8px; padding: 10px 12px; }
+    .kachel-val { font-size: 22px; font-weight: 700; color: #1a5a1a; line-height: 1; }
+    .kachel-lbl { font-size: 10px; color: #555; margin-top: 3px; text-transform: uppercase; letter-spacing: .5px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    th { background: #1a3a1a; color: #fff; padding: 6px 8px; text-align: left; font-size: 10px; font-weight: 600; }
+    td { padding: 5px 8px; border-bottom: 1px solid #e8f0e8; vertical-align: top; }
+    tr:nth-child(even) td { background: #f8fbf8; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .bold { font-weight: 700; }
+    .green { color: #1a6a1a; font-weight: 600; }
+    .fortschritt { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+    .bar-wrap { flex: 1; background: #e8f0e8; border-radius: 6px; height: 14px; overflow: hidden; }
+    .bar-abg { height: 100%; background: #2d6a2d; border-radius: 6px; display: inline-block; }
+    .bar-akt { height: 100%; background: #c8a840; display: inline-block; }
+    .footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 10px; color: #888; display: flex; justify-content: space-between; }
+    @media print {
+      body { padding: 12px 16px; }
+      @page { margin: 1.5cm; size: A4 landscape; }
+      h2 { page-break-after: avoid; }
+      table { page-break-inside: avoid; }
+    }
+  </style>
+  </head><body>
+  <h1>Ernte 2026 – Tagesbericht</h1>
+  <div class="subtitle">${datumStr} &nbsp;|&nbsp; Erstellt: ${heute.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})} Uhr</div>
+
+  <div class="kacheln">
+    <div class="kachel"><div class="kachel-val">${gesamtT.toFixed(1)}</div><div class="kachel-lbl">t gesamt</div></div>
+    <div class="kachel"><div class="kachel-val">${abgHa.toFixed(0)}</div><div class="kachel-lbl">ha abgeerntet</div></div>
+    <div class="kachel"><div class="kachel-val">${(gesamtHa-abgHa-aktivHa).toFixed(0)}</div><div class="kachel-lbl">ha noch offen</div></div>
+    <div class="kachel"><div class="kachel-val">${fertig.length}</div><div class="kachel-lbl">Fuhren gesamt</div></div>
+    <div class="kachel"><div class="kachel-val">${heuteFuhren.length}</div><div class="kachel-lbl">Fuhren heute</div></div>
+  </div>
+
+  <div class="fortschritt">
+    <span style="font-size:11px;font-weight:600;white-space:nowrap">Gesamtfortschritt</span>
+    <div class="bar-wrap">
+      <span class="bar-abg" style="width:${(abgHa/gesamtHa*100).toFixed(1)}%"></span><span class="bar-akt" style="width:${(aktivHa/gesamtHa*100).toFixed(1)}%"></span>
+    </div>
+    <span style="font-size:12px;font-weight:700;color:#1a3a1a;white-space:nowrap">${(abgHa/gesamtHa*100).toFixed(1)}%</span>
+    <span style="font-size:10px;color:#555;white-space:nowrap">${abgHa.toFixed(1)} / ${gesamtHa.toFixed(1)} ha</span>
+  </div>
+
+  <h2>Erntefortschritt je Kultur</h2>
+  <table>
+    <thead><tr>
+      <th>Kultur</th><th>ha gesamt</th><th>ha geerntet</th><th>ha offen</th>
+      <th>t gesamt</th><th>dt/ha</th><th>Ø Feuchte %</th><th>Ø Protein %</th><th>Ø HL</th><th>Fortschritt</th>
+    </tr></thead>
+    <tbody>${kulturRows}</tbody>
+  </table>
+
+  <h2>Heute abgeschlossene Schläge</h2>
+  <table>
+    <thead><tr>
+      <th>Schlag</th><th>Fruchtart</th><th>ha</th><th>t</th><th>dt/ha</th><th>Fuhren</th><th>Ø Feuchte</th><th>Ø Protein</th>
+    </tr></thead>
+    <tbody>${schlagRows}</tbody>
+  </table>
+
+  <h2>Fuhren heute (${heuteFuhren.length})</h2>
+  <table>
+    <thead><tr>
+      <th>Nr</th><th>Zeit</th><th>Schlag</th><th>Fruchtart</th><th>Drescher</th><th>Abfahrer</th>
+      <th>t netto</th><th>Feuchte</th><th>Protein</th><th>HL</th><th>Silo</th>
+    </tr></thead>
+    <tbody>${heuteFuhrenRows}</tbody>
+  </table>
+
+  <div class="footer">
+    <span>Ernte 2026 &ndash; Automatisch generierter Tagesbericht</span>
+    <span>${datumStr}</span>
+  </div>
+
+  <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`);
+  win.document.close();
 }
 
 function exportCSV() {
