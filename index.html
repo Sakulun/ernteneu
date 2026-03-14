@@ -1031,7 +1031,6 @@ function togglePw() {
 }
 
 async function doLogin() {
-  const name = document.getElementById('login-name').value.trim();
   const pw = document.getElementById('login-pw').value;
   const errEl = document.getElementById('login-error');
   if(!name || !pw) { errEl.style.display = 'block'; return; }
@@ -4057,7 +4056,7 @@ function showNachrichtBanner(text, vonName) {
   document.getElementById('nachricht-banner')?.remove();
   const b = document.createElement('div');
   b.id = 'nachricht-banner';
-  b.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-20px);z-index:8000;background:var(--card);border:1px solid var(--gold);border-radius:12px;padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.5);max-width:90vw;min-width:280px;animation:ob-slide-in 0.3s ease forwards;display:flex;align-items:flex-start;gap:12px';
+  b.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:8000;background:var(--card);border:1px solid var(--gold);border-radius:12px;padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.5);width:calc(100vw - 32px);max-width:480px;animation:ob-slide-in 0.3s ease forwards;display:flex;align-items:flex-start;gap:12px';
   b.innerHTML = `
     <span style="font-size:24px;flex-shrink:0">📢</span>
     <div style="flex:1">
@@ -4066,8 +4065,7 @@ function showNachrichtBanner(text, vonName) {
     </div>
     <button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;flex-shrink:0">✕</button>`;
   document.body.appendChild(b);
-  // Auto-dismiss nach 10 Sekunden
-  setTimeout(() => b?.remove(), 10000);
+  // Nur manuell schließbar – kein Auto-Dismiss
 }
 
 async function requestBrowserNotification() {
