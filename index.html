@@ -1018,7 +1018,6 @@ const db = {
       .on('postgres_changes', {event:'*', schema:'public', table:'gps_positionen'}, onChange)
       .on('postgres_changes', {event:'*', schema:'public', table:'silos'}, onChange)
       .subscribe((status, err) => {
-        console.log('Realtime status:', status, err||'');
         const dot = document.getElementById('topbar-sync');
         if(status === 'SUBSCRIBED') {
           if(dot) { dot.style.background='#22c55e'; dot.title='Echtzeit aktiv'; }
@@ -1401,8 +1400,17 @@ async function doLogin() {
     errEl.textContent = `Zu viele Versuche – bitte ${mins} Minute(n) warten.`;
     return;
   }
-  const hashed = await hashPW(pw);
-  const user = state.users.find(u => u.name.toLowerCase() === name.toLowerCase() && u.pw === hashed);
+  const hashed = await hashPW(name, pw);
+  let user = state.users.find(u => u.name.toLowerCase() === name.toLowerCase() && u.pw === hashed);
+  if(!user) {
+    // Legacy fallback: try old hash format (pw only, no username salt) and upgrade if match
+    const oldHashed = await hashPWLegacy(pw);
+    const legacyUser = state.users.find(u => u.name.toLowerCase() === name.toLowerCase() && u.pw === oldHashed);
+    if(legacyUser) {
+      user = legacyUser;
+      try { await db.upsertNutzer({...legacyUser, pw: hashed}); legacyUser.pw = hashed; } catch(e) {}
+    }
+  }
   if(!user) {
     const att = _loginAttempts[name.toLowerCase()] || {count:0, until:0};
     att.count++;
@@ -1584,8 +1592,8 @@ function drescherFeldWahl() {
     const sorteSelect = document.getElementById('d-sorte');
     if(verms.length > 0 && sorteGroup && sorteSelect) {
       sorteGroup.style.display = 'block';
-      sorteSelect.innerHTML = '<option value="">Konsum (' + feld.fruchtart + ')</option>'
-        + verms.map(v => `<option value="${v.sorte}">🌱 Vermehrung: ${v.sorte} (${v.flaeche} ha)</option>`).join('');
+      sorteSelect.innerHTML = '<option value="">Konsum (' + escapeHtml(feld.fruchtart) + ')</option>'
+        + verms.map(v => `<option value="${escapeHtml(v.sorte)}">🌱 Vermehrung: ${escapeHtml(v.sorte)} (${escapeHtml(v.flaeche)} ha)</option>`).join('');
     } else if(sorteGroup) {
       sorteGroup.style.display = 'none';
       if(sorteSelect) sorteSelect.value = '';
@@ -1601,7 +1609,7 @@ function drescherFeldWahl() {
 async function drescherZuweisen() {
   const feldId = parseInt(document.getElementById('d-feld').value);
   const abfahrerId = parseInt(document.getElementById('d-abf').value);
-  if(!feldId||!abfahrerId) { alert('Bitte alle Felder ausfüllen.'); return; }
+  if(isNaN(feldId)||isNaN(abfahrerId)||!feldId||!abfahrerId) { alert('Bitte alle Felder ausfüllen.'); return; }
   if(!abfahrerIstFrei(abfahrerId)) { alert('Dieser Abfahrer hat noch eine offene Fuhre!'); return; }
   const feld = getFeld(feldId);
   const sorteEl = document.getElementById('d-sorte');
@@ -1622,7 +1630,12 @@ async function drescherZuweisen() {
   try {
     const dbId = await db.insertFuhre(newFuhre);
     newFuhre.id = dbId;
-  } catch(e) { showToast('⚠ Fuhre nicht gespeichert: '+e.message, 'error'); }
+  } catch(e) {
+    state.fuhren.splice(state.fuhren.indexOf(newFuhre), 1);
+    state.nextNr--;
+    showToast('⚠ Fuhre nicht gespeichert: '+e.message, 'error');
+    renderDrescher();
+  }
 }
 
 // ─── ABFAHRER ───
@@ -1755,10 +1768,11 @@ async function fuhreSpeichern(fId) {
     oelgehalt: qualWerte.oelgehalt || null,
     status:    'fertig'
   };
+  const prevState = { vollgewicht: f.vollgewicht, leergewicht: f.leergewicht, feuchte: f.feuchte, protein: f.protein, gluten: f.gluten, hlGewicht: f.hlGewicht, oelgehalt: f.oelgehalt, status: f.status };
   Object.assign(f, updates);
   renderAbfahrer();
   try { await db.updateFuhre(fId, updates); showToast('✓ Fuhre gespeichert'); }
-  catch(e) { showToast('⚠ Speicherfehler: '+e.message, 'error'); }
+  catch(e) { Object.assign(f, prevState); showToast('⚠ Speicherfehler: '+e.message, 'error'); renderAbfahrer(); }
 }
 
 function renderAbfahrerFertig() {
@@ -2597,12 +2611,12 @@ async function nutzerAnlegen() {
   if(state.users.find(u=>u.name.toLowerCase()===name.toLowerCase())) {
     alert('Ein Nutzer mit diesem Namen existiert bereits.'); return;
   }
-  const pwHash = await hashPW(pw);
+  const pwHash = await hashPW(name, pw);
   const newUser = { name, role, label:roleLabel(role), pw: pwHash };
   try {
     await db.upsertNutzer(newUser);
     state.users = await db.getNutzer();
-    state.nextUserId = Math.max(...state.users.map(u=>u.id)) + 1;
+    state.nextUserId = (state.users.length ? Math.max(...state.users.map(u=>u.id)) : 0) + 1;
     showToast('✓ Nutzer angelegt');
   } catch(e) {
     alert('Fehler: ' + e.message); return;
@@ -2628,7 +2642,7 @@ async function nutzerSpeichern(id) {
     alert('Dieser Name ist bereits vergeben.'); return;
   }
   u.name = name; u.role = role; u.label = roleLabel(role);
-  if(pw) u.pw = await hashPW(pw);
+  if(pw) u.pw = await hashPW(name, pw);
   try {
     await db.upsertNutzer(u);
     showToast('✓ Änderungen gespeichert');
@@ -2846,7 +2860,6 @@ async function requestWakeLock() {
       _wakeLock = null;
       // Automatisch neu anfordern wenn Seite wieder sichtbar
     });
-    console.log('Wake Lock aktiv – Bildschirm bleibt an');
     const wlEl = document.getElementById('topbar-wakelock'); if(wlEl) wlEl.style.display='inline';
   } catch(e) {
     console.warn('Wake Lock nicht verfügbar:', e.message);
@@ -2965,11 +2978,11 @@ function getSiloFill(siloId) {
 }
 
 function getSiloKultur(siloId) {
-  // Kultur wird durch erste eingelagerte Fuhre bestimmt
+  // Kultur wird durch erste eingelagerte Fuhre bestimmt (inkl. Sorte für Vermehrung)
   const silo = state.silos.find(s=>s.id===siloId);
   if(silo?.fruchtart) return silo.fruchtart;
   const firstFuhre = state.fuhren.find(f=>f.siloId===siloId&&f.status==='fertig');
-  return firstFuhre?.fruchtart || null;
+  return firstFuhre ? getFuhreKulturKey(firstFuhre) : null;
 }
 
 
@@ -2993,7 +3006,15 @@ function hideSiloOverlay() {
 }
 
 // ─── SHA-256 HASHING ───
-async function hashPW(pw) {
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+async function hashPW(name, pw) {
+  const input = name.toLowerCase() + ':' + pw;
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function hashPWLegacy(pw) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
@@ -3426,10 +3447,8 @@ function renderSiloManagement() {
 }
 
 function openSiloDetail(siloId) {
-  console.log('openSiloDetail called:', siloId);
   _activeSiloId = siloId;
   const panel = document.getElementById('silo-detail-content');
-  console.log('panel found:', !!panel);
   renderSiloDetail(siloId);
   // Re-render silo circles to update active state without full re-render
   // Update active state on silo SVGs
@@ -3549,14 +3568,14 @@ async function dropFuhreOnSilo(event, siloId) {
     return;
   }
 
-  // Silo: Kultur wird durch erste Fuhre festgelegt
+  // Silo: Kultur wird durch erste Fuhre festgelegt (inkl. Sorte für Vermehrung)
   const siloKultur = getSiloKultur(siloId);
-  if(siloKultur && siloKultur !== f.fruchtart) {
-    showToast(`⚠ Silo ${siloId} enthält ${siloKultur} – keine andere Kultur möglich`, 'error');
+  const fuhreKulturKey = getFuhreKulturKey(f);
+  if(siloKultur && siloKultur !== fuhreKulturKey) {
+    showToast(`⚠ Silo ${siloId} enthält ${siloKultur} – keine andere Kultur/Sorte möglich`, 'error');
     return;
   }
 
-  // Wenn erstes Einlagern: Kultur automatisch setzen
   // Wenn Fuhre schon in anderem Silo war: altes Silo Kultur prüfen
   if(f.siloId && f.siloId !== siloId && f.siloId !== 'HOF') {
     const oldSilo = state.silos.find(s=>s.id===f.siloId);
@@ -3566,37 +3585,38 @@ async function dropFuhreOnSilo(event, siloId) {
     }
   }
   const isFirst = !siloKultur;
+  const previousSiloId = f.siloId;
   f.siloId = siloId;
   if(isFirst) {
-    silo.fruchtart = f.fruchtart;
-    try { await db.updateSilo(siloId, {fruchtart: f.fruchtart}); } catch(e) {}
+    silo.fruchtart = fuhreKulturKey;
+    try { await db.updateSilo(siloId, {fruchtart: fuhreKulturKey}); } catch(e) {}
   }
 
   renderSiloManagement();
   try {
     await db.updateFuhre(fId, {siloId});
-    showToast(`✓ ${f.nr} → Silo ${siloId}${isFirst?' (Kultur festgelegt: '+f.fruchtart+')':''}`);
-  } catch(e) { showToast('⚠ '+e.message,'error'); }
+    showToast(`✓ ${f.nr} → Silo ${siloId}${isFirst?' (Kultur festgelegt: '+fuhreKulturKey+')':''}`);
+  } catch(e) { f.siloId = previousSiloId; showToast('⚠ '+e.message,'error'); }
 }
 
 async function removeFuhreFromSilo(fId) {
   const f = state.fuhren.find(x=>x.id===fId);
   if(!f) return;
-  const siloId = f.siloId;
+  const previousSiloId = f.siloId;
   f.siloId = null;
   // Nur für echte Silos: Kultur zurücksetzen wenn leer
-  if(siloId !== 'HOF') {
-    const silo = state.silos.find(s=>s.id===siloId);
-    const remaining = state.fuhren.filter(x=>x.siloId===siloId&&x.status==='fertig');
+  if(previousSiloId !== 'HOF') {
+    const silo = state.silos.find(s=>s.id===previousSiloId);
+    const remaining = state.fuhren.filter(x=>x.siloId===previousSiloId&&x.status==='fertig');
     if(silo && remaining.length === 0) {
       silo.fruchtart = null;
-      try { await db.updateSilo(siloId, {fruchtart: null}); } catch(e) {}
+      try { await db.updateSilo(previousSiloId, {fruchtart: null}); } catch(e) {}
     }
   }
   renderSiloManagement();
   if(_activeSiloId) renderSiloDetail(_activeSiloId);
   try { await db.updateFuhre(fId, {siloId: null}); showToast('✓ Fuhre wieder in Warteschlange'); }
-  catch(e) { showToast('⚠ '+e.message,'error'); }
+  catch(e) { f.siloId = previousSiloId; showToast('⚠ '+e.message,'error'); renderSiloManagement(); }
 }
 
 // ─── SILOMEISTER VIEW ───
