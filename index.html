@@ -1529,6 +1529,52 @@ const db = {
     if(error) throw error;
   },
 
+  // Artikel
+  async getArtikel() {
+    const { data, error } = await sb.from('artikel').select('*').order('name');
+    if(error) throw error;
+    return data || [];
+  },
+  async insertArtikel(a) {
+    const { data, error } = await sb.from('artikel').insert({
+      name: a.name, einheit: a.einheit, kategorie: a.kategorie, aktiv: true
+    }).select().single();
+    if(error) throw error;
+    return data;
+  },
+  async updateArtikel(a) {
+    const { error } = await sb.from('artikel').update({
+      name: a.name, einheit: a.einheit, kategorie: a.kategorie, aktiv: a.aktiv
+    }).eq('id', a.id);
+    if(error) throw error;
+  },
+
+  // Warenbewegungen
+  async getWarenbewegungen() {
+    const { data, error } = await sb.from('warenbewegungen').select('*').order('erstellt_am', {ascending:false});
+    if(error) throw error;
+    return data || [];
+  },
+  async insertWarenbewegung(w) {
+    const { data, error } = await sb.from('warenbewegungen').insert({
+      typ: w.typ || 'ausgang',
+      artikel_id: w.artikelId || null,
+      silo_von_id: w.siloVonId || null,
+      silo_nach_id: w.siloNachId || null,
+      menge_kg: w.mengeKg,
+      empfaenger: w.empfaenger || null,
+      beleg_nr: w.belegNr || null,
+      notiz: w.notiz || null,
+      erstellt_von: w.erstelltVon || null
+    }).select().single();
+    if(error) throw error;
+    return data;
+  },
+  async deleteWarenbewegung(id) {
+    const { error } = await sb.from('warenbewegungen').delete().eq('id', id);
+    if(error) throw error;
+  },
+
   // GPS
   async upsertGPS(nutzerId, lat, lon) {
     const { error } = await sb.from('gps_positionen').upsert({
@@ -1549,6 +1595,8 @@ const db = {
       .on('postgres_changes', {event:'*', schema:'public', table:'felder'}, onChange)
       .on('postgres_changes', {event:'*', schema:'public', table:'gps_positionen'}, onChange)
       .on('postgres_changes', {event:'*', schema:'public', table:'silos'}, onChange)
+      .on('postgres_changes', {event:'*', schema:'public', table:'warenbewegungen'}, onChange)
+      .on('postgres_changes', {event:'*', schema:'public', table:'artikel'}, onChange)
       .subscribe((status, err) => {
         const dot = document.getElementById('topbar-sync');
         if(status === 'SUBSCRIBED') {
@@ -1593,6 +1641,8 @@ async function bootApp() {
     state.silos = await db.getSilos().catch(e => { console.warn('getSilos:', e); return []; });
     state.lieferungen = await db.getLieferungen().catch(e => { console.warn('getLieferungen:', e); return []; });
     state.vermehrungen = await db.getVermehrungen().catch(e => { console.warn('getVermehrungen:', e); return []; });
+    state.artikel = await db.getArtikel().catch(e => { console.warn('getArtikel:', e); return []; });
+    state.warenbewegungen = await db.getWarenbewegungen().catch(e => { console.warn('getWarenbewegungen:', e); return []; });
     const lnrs = state.lieferungen.map(l=>parseInt((l.nr||'').replace('L-',''))).filter(n=>!isNaN(n));
     state.nextLieferNr = lnrs.length ? Math.max(...lnrs)+1 : 1;
 
@@ -1632,6 +1682,8 @@ async function bootApp() {
           return;
         }
         if(tbl === 'silos') { state.silos = await db.getSilos().catch(()=>[]); return; }
+        if(tbl === 'warenbewegungen') { state.warenbewegungen = await db.getWarenbewegungen().catch(()=>[]); return; }
+        if(tbl === 'artikel') { state.artikel = await db.getArtikel().catch(()=>[]); return; }
         if(tbl === 'fuhren') {
           state.fuhren = await db.getFuhren().catch(()=>[]);
           const nrs2 = state.fuhren.map(f=>parseInt((f.nr||'').replace('F-',''))).filter(n=>!isNaN(n));
@@ -1866,6 +1918,8 @@ const state = {
   lieferungen: [],
   vermehrungen: [],
   nextLieferNr: 1,
+  artikel: [],
+  warenbewegungen: [],
   nextId: 1, nextNr: 1, lastFeldId: null,
 };
 
@@ -2374,9 +2428,12 @@ function renderAdmin() {
           <button class="sidebar-btn ${adminTab==='jdlink'?'active':''}" onclick="setAdminTab('jdlink')">
             <span class="sidebar-icon">🚜</span><span class="sidebar-label">JD Telemetrie</span>
           </button>
-          <div class="sidebar-section">Verkauf</div>
+          <div class="sidebar-section">Warenwirtschaft</div>
           <button class="sidebar-btn ${adminTab==='warenausgang'?'active':''}" onclick="setAdminTab('warenausgang')">
-            <span class="sidebar-icon">🚛</span><span class="sidebar-label">Warenausgang</span>
+            <span class="sidebar-icon">📦</span><span class="sidebar-label">Ausgänge</span>
+          </button>
+          <button class="sidebar-btn ${adminTab==='artikel'?'active':''}" onclick="setAdminTab('artikel')">
+            <span class="sidebar-icon">🗂</span><span class="sidebar-label">Artikel</span>
           </button>
           <div class="sidebar-section">System</div>
           <button class="sidebar-btn ${adminTab==='erntejahr'?'active':''}" onclick="setAdminTab('erntejahr')">
@@ -2406,6 +2463,7 @@ function renderAdmin() {
   else if(adminTab==='nutzer') renderAdminNutzer();
   else if(adminTab==='karte') renderAdminKarte();
   else if(adminTab==='warenausgang') renderWarenausgang();
+  else if(adminTab==='artikel') renderArtikel();
   else if(adminTab==='jdlink') renderJDLink();
   else if(adminTab==='erntejahr') renderNeuesErntejahr();
   else if(adminTab==='silos') {
@@ -3508,6 +3566,14 @@ function getSiloFill(siloId) {
     .filter(f => f.siloId === siloId && f.status === 'fertig')
     .reduce((s,f) => s+(netto(f)||0), 0);
 }
+function getSiloAusgang(siloId) {
+  return state.warenbewegungen
+    .filter(w => w.silo_von_id === siloId && w.typ === 'ausgang')
+    .reduce((s,w) => s+(w.menge_kg||0), 0);
+}
+function getSiloBestand(siloId) {
+  return Math.max(0, getSiloFill(siloId) - getSiloAusgang(siloId));
+}
 
 function getSiloKultur(siloId) {
   // Kultur wird durch erste eingelagerte Fuhre bestimmt (inkl. Sorte für Vermehrung)
@@ -4002,7 +4068,10 @@ function renderSiloDetail(siloId) {
   const silo = state.silos.find(s=>s.id===siloId);
   if(!silo) return;
   const assignedFuhren = state.fuhren.filter(f=>f.siloId===siloId&&f.status==='fertig').sort((a,b)=>new Date(b.zeit)-new Date(a.zeit));
-  const fillT = getSiloFill(siloId)/1000;
+  const eingangKg = getSiloFill(siloId);
+  const ausgangKg = getSiloAusgang(siloId);
+  const bestandKg = Math.max(0, eingangKg - ausgangKg);
+  const fillT = bestandKg/1000;
   const pct = Math.min(100,(fillT/silo.kapazitaet_t)*100);
   const kultur = getSiloKultur(siloId);
   const farbe = getFruchtFarbe(kultur);
@@ -4047,10 +4116,22 @@ function renderSiloDetail(siloId) {
     <div style="background:#d8e8d0;border-radius:6px;height:10px;overflow:hidden;margin-bottom:6px">
       <div style="width:${Math.min(pct,100).toFixed(1)}%;height:100%;background:${barColor};border-radius:6px;transition:width .3s"></div>
     </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:20px">
-      <span style="font-size:20px;font-weight:700;color:#2c2c2c">${fillT.toFixed(1)} t</span>
-      <span style="font-size:20px;font-weight:700;color:${barColor}">${pct.toFixed(0)}%</span>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:16px">
+      <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 10px;text-align:center">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:3px">Eingang</div>
+        <div style="font-size:16px;font-weight:700;color:var(--green2)">${(eingangKg/1000).toFixed(1)} t</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 10px;text-align:center">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:3px">Ausgang</div>
+        <div style="font-size:16px;font-weight:700;color:var(--red)">${(ausgangKg/1000).toFixed(1)} t</div>
+      </div>
+      <div style="background:var(--bg3);border:2px solid var(--gold);border-radius:var(--radius);padding:8px 10px;text-align:center">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:3px">Bestand</div>
+        <div style="font-size:16px;font-weight:700;color:#fff">${fillT.toFixed(1)} t</div>
+      </div>
     </div>
+    ${bestandKg > 0 ? `<button class="btn btn-amber btn-full" style="margin-bottom:16px" onclick="auslagernDialog('${siloId}')">↑ Auslagern</button>` : ''}
+    <div style="font-size:12px;color:var(--text3);margin-bottom:4px;text-align:right">${pct.toFixed(0)}% belegt</div>
     ${avgFeuchte ? `
     <div style="background:#f4f8f4;border-radius:8px;padding:12px 14px;margin-bottom:16px;border:1px solid #d0dcd0">
       <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#5a7a5a;margin-bottom:10px">Ø Qualität</div>
@@ -4066,6 +4147,96 @@ function renderSiloDetail(siloId) {
     </div>
     ${assignedFuhren.map(fuhreRow).join('')}
     ${!assignedFuhren.length?`<div style="text-align:center;padding:32px 0;color:#3d5a28;font-size:14px">Leer<br><span style="font-size:12px">Fuhre aus der Warteschlange hierher ziehen</span></div>`:''}`;
+}
+
+// ─── AUSLAGERN ───
+function auslagernDialog(siloId) {
+  const silo = state.silos.find(s=>s.id===siloId);
+  if(!silo) return;
+  const bestandKg = getSiloBestand(siloId);
+  const bestandT  = (bestandKg/1000).toFixed(2);
+  const kultur    = getSiloKultur(siloId);
+
+  // Artikel-Optionen: bevorzuge passende Fruchtart, dann alle aktiven
+  const aktiveArtikel = state.artikel.filter(a=>a.aktiv);
+  const artOpts = aktiveArtikel.map(a => {
+    const sel = kultur && a.name.toLowerCase().includes(kultur.toLowerCase()) ? ' selected' : '';
+    return `<option value="${a.id}"${sel}>${a.name} (${a.einheit})</option>`;
+  }).join('');
+
+  const m = document.createElement('div');
+  m.id = 'auslagern-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border2);border-radius:var(--radius);padding:24px;width:100%;max-width:420px;box-shadow:var(--shadow)">
+      <div style="font-family:var(--serif);font-size:20px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text);margin-bottom:4px">↑ Auslagern</div>
+      <div style="font-size:11px;color:var(--text3);letter-spacing:1px;margin-bottom:20px">Silo ${siloId} · Bestand: ${bestandT} t</div>
+      <div class="form-group">
+        <label>Artikel *</label>
+        <select id="aus-artikel">${artOpts || '<option value="">– kein Artikel –</option>'}</select>
+      </div>
+      <div class="form-group">
+        <label>Menge (t) *</label>
+        <input type="number" id="aus-menge" min="0.001" step="0.001" max="${bestandT}" placeholder="z.B. 50.000">
+      </div>
+      <div class="form-group">
+        <label>Empfänger</label>
+        <input type="text" id="aus-empfaenger" placeholder="z.B. RWA Magdeburg">
+      </div>
+      <div class="form-group">
+        <label>Beleg-Nr.</label>
+        <input type="text" id="aus-beleg" placeholder="z.B. LS-2026-001">
+      </div>
+      <div class="form-group">
+        <label>Notiz</label>
+        <input type="text" id="aus-notiz">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-amber" style="flex:1" onclick="auslagernSpeichern('${siloId}')">Auslagern bestätigen</button>
+        <button class="btn btn-outline" onclick="document.getElementById('auslagern-modal').remove()">Abbrechen</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+}
+
+async function auslagernSpeichern(siloId) {
+  const artikelId = parseInt(document.getElementById('aus-artikel')?.value);
+  const mengeT    = parseFloat(document.getElementById('aus-menge')?.value);
+  const empfaenger= document.getElementById('aus-empfaenger')?.value.trim();
+  const belegNr   = document.getElementById('aus-beleg')?.value.trim();
+  const notiz     = document.getElementById('aus-notiz')?.value.trim();
+
+  if(!artikelId || isNaN(mengeT) || mengeT <= 0) {
+    showToast('⚠ Bitte Artikel und Menge angeben', 'error'); return;
+  }
+  const mengeKg = mengeT * 1000;
+  const bestandKg = getSiloBestand(siloId);
+  if(mengeKg > bestandKg + 0.01) {
+    showToast('⚠ Menge überschreitet den Bestand von '+(bestandKg/1000).toFixed(2)+' t', 'error'); return;
+  }
+
+  const bewegung = { typ:'ausgang', artikelId, siloVonId: siloId, mengeKg, empfaenger, belegNr, notiz,
+    erstelltVon: state.currentUser?.id || null };
+  try {
+    const saved = await db.insertWarenbewegung(bewegung);
+    state.warenbewegungen.unshift(saved);
+    document.getElementById('auslagern-modal')?.remove();
+    showToast('✓ '+mengeT.toFixed(3)+' t ausgelagert');
+    renderSiloDetail(siloId);
+    renderSiloManagement();
+  } catch(e) {
+    showToast('⚠ '+e.message, 'error');
+  }
+}
+
+async function deleteWarenbewegung(id) {
+  if(!confirm('Warenbewegung wirklich löschen?')) return;
+  try {
+    await db.deleteWarenbewegung(id);
+    state.warenbewegungen = state.warenbewegungen.filter(w=>w.id!==id);
+    if(adminTab === 'warenausgang') renderWarenausgang();
+    showToast('✓ Bewegung gelöscht');
+  } catch(e) { showToast('⚠ '+e.message,'error'); }
 }
 
 async function dropFuhreOnSilo(event, siloId) {
@@ -4196,16 +4367,137 @@ function renderWarenausgang() {
       +'<button class="btn btn-sm btn-outline" onclick="lieferungPDF('+l.id+')">📄 Lieferschein</button>'
       +'</div></div>';
   };
+  // Warenbewegungen (direkte Auslagerungen)
+  const bewegungen = state.warenbewegungen.filter(w=>w.typ==='ausgang');
+  const bewegungT  = bewegungen.reduce((s,w)=>s+(w.menge_kg||0),0)/1000;
+  const bRow = (w) => {
+    const art = state.artikel.find(a=>a.id===w.artikel_id);
+    const mT  = ((w.menge_kg||0)/1000).toFixed(3);
+    const datum = new Date(w.erstellt_am).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    return '<div class="card" style="margin-bottom:6px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:13px;font-weight:600;color:var(--text)">'+(art?art.name:'–')+(w.silo_von_id?' · Silo '+w.silo_von_id:'')+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+(w.empfaenger||'kein Empfänger')+(w.beleg_nr?' · '+w.beleg_nr:'')+'</div>'
+      +(w.notiz?'<div style="font-size:11px;color:var(--text3)">'+escapeHtml(w.notiz)+'</div>':'')
+      +'</div>'
+      +'<div style="text-align:right;flex-shrink:0">'
+      +'<div style="font-size:15px;font-weight:700;color:var(--gold)">'+mT+' t</div>'
+      +'<div style="font-size:10px;color:var(--text3)">'+datum+'</div>'
+      +'<button class="btn btn-sm" style="background:none;border:1px solid var(--border2);color:var(--red);margin-top:4px;padding:3px 8px" onclick="deleteWarenbewegung('+w.id+')">✕</button>'
+      +'</div></div></div>';
+  };
+
   document.getElementById('admintab').innerHTML = ''
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1;min-width:240px">'
-    +'<div class="stat-box"><div class="stat-val" style="font-size:22px;color:#c07820">'+offen.length+'</div><div class="stat-label">offen</div></div>'
-    +'<div class="stat-box"><div class="stat-val" style="font-size:22px;color:#3d5a28">'+abg.length+'</div><div class="stat-label">abgeschlossen</div></div>'
-    +'<div class="stat-box"><div class="stat-val" style="font-size:18px;color:#2c2c2c">'+nettoT.toFixed(1)+'</div><div class="stat-label">t ausgeliefert</div></div>'
+    +'<div class="stat-box"><div class="stat-val" style="font-size:22px;color:var(--amber)">'+offen.length+'</div><div class="stat-label">Lieferungen offen</div></div>'
+    +'<div class="stat-box"><div class="stat-val" style="font-size:22px;color:var(--green2)">'+abg.length+'</div><div class="stat-label">Lieferungen fertig</div></div>'
+    +'<div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--text)">'+(nettoT+bewegungT).toFixed(1)+'</div><div class="stat-label">t gesamt ausgelagert</div></div>'
     +'</div><button class="btn btn-primary" onclick="neueLieferungDialog()">+ Neue Lieferung</button></div>'
-    +(offen.length?'<div class="section-label" style="color:var(--amber)">⚠ Offen ('+offen.length+')</div>'+offen.map(lRow).join(''):'')
-    +(abg.length?'<div class="section-label" style="margin-top:8px">✓ Abgeschlossen ('+abg.length+')</div>'+abg.map(lRow).join(''):'')
-    +(!state.lieferungen.length?'<div class="empty-state">Noch keine Lieferungen.<br>Klicke auf „+ Neue Lieferung".</div>':'');
+
+    // Direkte Auslagerungen (warenbewegungen)
+    +'<div class="section-label" style="margin-bottom:8px">Direkte Auslagerungen ('+bewegungen.length+' · '+bewegungT.toFixed(1)+' t)</div>'
+    +(bewegungen.length ? bewegungen.map(bRow).join('') : '<div class="empty-state" style="padding:20px">Noch keine Auslagerungen. Nutze den „↑ Auslagern"-Button in der Silo-Verwaltung.</div>')
+
+    // Lieferungen (LKW-Waage-Workflow)
+    +(offen.length||abg.length ? '<div class="section-label" style="margin-top:16px;margin-bottom:8px">Lieferungen (LKW-Waage)</div>' : '')
+    +(offen.length?'<div class="section-label" style="color:var(--amber);font-size:9px">⚠ Offen ('+offen.length+')</div>'+offen.map(lRow).join(''):'')
+    +(abg.length?'<div class="section-label" style="margin-top:8px;font-size:9px">✓ Abgeschlossen ('+abg.length+')</div>'+abg.map(lRow).join(''):'');
+}
+
+function renderArtikel() {
+  const kategorien = ['getreide','betriebsmittel','saatgut','sonstige'];
+  const katLabel = { getreide:'Getreide / Druschfrüchte', betriebsmittel:'Betriebsmittel', saatgut:'Saatgut', sonstige:'Sonstige' };
+  const artRow = (a) =>
+    `<div class="card" style="margin-bottom:6px;opacity:${a.aktiv?1:0.5}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="flex:1">
+          <div style="font-weight:600;color:var(--text)">${escapeHtml(a.name)}</div>
+          <div style="font-size:11px;color:var(--text3);">${a.einheit} · ${katLabel[a.kategorie]||a.kategorie}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-sm btn-outline" onclick="artikelEditDialog(${a.id})">✏</button>
+          <button class="btn btn-sm" style="background:none;border:1px solid var(--border2);color:${a.aktiv?'var(--red)':'var(--green)'}" onclick="artikelToggleAktiv(${a.id})">${a.aktiv?'Deaktivieren':'Aktivieren'}</button>
+        </div>
+      </div>
+    </div>`;
+
+  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    +'<div class="stat-box" style="flex:1;margin-right:8px"><div class="stat-val" style="font-size:22px">'+state.artikel.filter(a=>a.aktiv).length+'</div><div class="stat-label">aktive Artikel</div></div>'
+    +'<button class="btn btn-primary" onclick="artikelNeuDialog()">+ Neuer Artikel</button>'
+    +'</div>';
+
+  for(const kat of kategorien) {
+    const gruppe = state.artikel.filter(a=>a.kategorie===kat);
+    if(!gruppe.length) continue;
+    html += `<div class="section-label" style="margin-bottom:8px">${katLabel[kat]} (${gruppe.length})</div>`;
+    html += gruppe.map(artRow).join('');
+  }
+  if(!state.artikel.length) html += '<div class="empty-state">Keine Artikel angelegt.</div>';
+  document.getElementById('admintab').innerHTML = html;
+}
+
+function artikelNeuDialog(id) {
+  const a = id ? state.artikel.find(x=>x.id===id) : null;
+  const m = document.createElement('div');
+  m.id = 'artikel-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border2);border-radius:var(--radius);padding:24px;width:100%;max-width:380px;box-shadow:var(--shadow)">
+      <div style="font-family:var(--serif);font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text);margin-bottom:20px">${a?'Artikel bearbeiten':'Neuer Artikel'}</div>
+      <div class="form-group"><label>Name *</label><input type="text" id="art-name" value="${a?escapeHtml(a.name):''}" placeholder="z.B. Winterweizen"></div>
+      <div class="form-group"><label>Einheit</label>
+        <select id="art-einheit">
+          ${['t','kg','l','Stück'].map(u=>`<option value="${u}"${(a?.einheit||'t')===u?' selected':''}>${u}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>Kategorie</label>
+        <select id="art-kategorie">
+          <option value="getreide"${(!a||a.kategorie==='getreide')?' selected':''}>Getreide / Druschfrüchte</option>
+          <option value="betriebsmittel"${a?.kategorie==='betriebsmittel'?' selected':''}>Betriebsmittel</option>
+          <option value="saatgut"${a?.kategorie==='saatgut'?' selected':''}>Saatgut</option>
+          <option value="sonstige"${a?.kategorie==='sonstige'?' selected':''}>Sonstige</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-primary" style="flex:1" onclick="artikelSpeichern(${a?a.id:'null'})">${a?'Speichern':'Anlegen'}</button>
+        <button class="btn btn-outline" onclick="document.getElementById('artikel-modal').remove()">Abbrechen</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+}
+function artikelEditDialog(id) { artikelNeuDialog(id); }
+
+async function artikelSpeichern(id) {
+  const name     = document.getElementById('art-name')?.value.trim();
+  const einheit  = document.getElementById('art-einheit')?.value;
+  const kategorie= document.getElementById('art-kategorie')?.value;
+  if(!name) { showToast('⚠ Name erforderlich','error'); return; }
+  try {
+    if(id) {
+      const a = state.artikel.find(x=>x.id===id);
+      await db.updateArtikel({...a, name, einheit, kategorie});
+      Object.assign(a, {name, einheit, kategorie});
+    } else {
+      const saved = await db.insertArtikel({name, einheit, kategorie});
+      state.artikel.push(saved);
+      state.artikel.sort((a,b)=>a.name.localeCompare(b.name));
+    }
+    document.getElementById('artikel-modal')?.remove();
+    showToast('✓ Artikel gespeichert');
+    renderArtikel();
+  } catch(e) { showToast('⚠ '+e.message,'error'); }
+}
+
+async function artikelToggleAktiv(id) {
+  const a = state.artikel.find(x=>x.id===id);
+  if(!a) return;
+  try {
+    await db.updateArtikel({...a, aktiv: !a.aktiv});
+    a.aktiv = !a.aktiv;
+    renderArtikel();
+  } catch(e) { showToast('⚠ '+e.message,'error'); }
 }
 
 function neueLieferungDialog() {
