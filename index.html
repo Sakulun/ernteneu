@@ -4529,7 +4529,7 @@ function renderWarenausgang() {
 
     // Direkte Auslagerungen (warenbewegungen)
     +'<div class="section-label" style="margin-bottom:8px">Direkte Auslagerungen ('+bewegungen.length+' · '+bewegungT.toFixed(1)+' t)</div>'
-    +(bewegungen.length ? bewegungen.map(bRow).join('') : '<div class="empty-state" style="padding:20px">Noch keine Auslagerungen. Nutze den „↑ Auslagern"-Button in der Silo-Verwaltung.</div>')
+    +(bewegungen.length ? bewegungen.map(bRow).join('') : '<div class="empty-state" style="padding:20px">Noch keine Auslagerungen. Nutze den „↑ Neue Auslagerung"-Button oben.</div>')
 
     // Lieferungen (LKW-Waage-Workflow)
     +(offen.length||abg.length ? '<div class="section-label" style="margin-top:16px;margin-bottom:8px">Lieferungen (LKW-Waage)</div>' : '')
