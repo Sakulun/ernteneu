@@ -2488,7 +2488,7 @@ function renderAdmin() {
           </button>
           <div class="sidebar-section">Warenwirtschaft</div>
           <button class="sidebar-btn ${adminTab==='warenausgang'?'active':''}" onclick="setAdminTab('warenausgang')">
-            <span class="sidebar-icon">📦</span><span class="sidebar-label">Ausgänge</span>
+            <span class="sidebar-icon">⇅</span><span class="sidebar-label">Warenbewegungen</span>
           </button>
           <button class="sidebar-btn ${adminTab==='kontrakte'?'active':''}" onclick="setAdminTab('kontrakte')">
             <span class="sidebar-icon">📋</span><span class="sidebar-label">Kontrakte</span>
@@ -4196,7 +4196,7 @@ function renderSiloDetail(siloId) {
         <div style="font-size:16px;font-weight:700;color:#fff">${fillT.toFixed(1)} t</div>
       </div>
     </div>
-    ${bestandKg > 0 ? `<div style="font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:12px;text-align:center">Auslagerungen → Warenwirtschaft › Ausgänge</div>` : ''}
+    ${bestandKg > 0 ? `<div style="font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:12px;text-align:center">Auslagerungen → Warenwirtschaft › Warenbewegungen</div>` : ''}
     <div style="font-size:12px;color:var(--text3);margin-bottom:4px;text-align:right">${pct.toFixed(0)}% belegt</div>
     ${avgFeuchte ? `
     <div style="background:#f4f8f4;border-radius:8px;padding:12px 14px;margin-bottom:16px;border:1px solid #d0dcd0">
@@ -4216,145 +4216,189 @@ function renderSiloDetail(siloId) {
 }
 
 // ─── AUSLAGERN ───
-function auslagernDialog(preSiloId) {
-  // Silos mit Bestand > 0
-  const silosMitBestand = state.silos
-    .filter(s => getSiloBestand(s.id) > 0)
-    .sort((a,b) => a.id.localeCompare(b.id, undefined, {numeric:true}));
-
-  const siloOpts = silosMitBestand.map(s => {
+function warenausgangsDialog() {
+  const silosAlle = state.silos.sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true}));
+  const siloOpts = silosAlle.map(s => {
     const bT = (getSiloBestand(s.id)/1000).toFixed(1);
     const kultur = getSiloKultur(s.id) || '–';
-    const sel = s.id === preSiloId ? ' selected' : '';
-    return `<option value="${s.id}"${sel}>Silo ${s.id} · ${kultur} · ${bT} t</option>`;
+    return `<option value="${s.id}">Silo ${s.id} · ${kultur} · ${bT} t Bestand</option>`;
   }).join('');
 
-  const aktiveArtikel = state.artikel.filter(a=>a.aktiv);
-  const artOpts = aktiveArtikel.map(a =>
-    `<option value="${a.id}">${a.name} (${a.einheit})</option>`
-  ).join('');
+  const artOpts = state.artikel.filter(a=>a.aktiv).map(a=>
+    `<option value="${a.id}">${escapeHtml(a.name)} (${a.einheit})</option>`).join('');
 
-  const kontraktOpts = state.kontrakte
-    .filter(k=>k.status==='aktiv')
-    .map(k => {
-      const kt = state.kontakte.find(c=>c.id===k.kontakt_id);
-      return `<option value="${k.id}">${k.nummer}${kt?' · '+kt.name:''}</option>`;
-    }).join('');
+  const kontraktOpts = state.kontrakte.filter(k=>k.status==='aktiv').map(k=>{
+    const kt = state.kontakte.find(c=>c.id===k.kontakt_id);
+    return `<option value="${k.id}">${escapeHtml(k.nummer)}${kt?' · '+escapeHtml(kt.name):''}</option>`;
+  }).join('');
 
   const m = document.createElement('div');
-  m.id = 'auslagern-modal';
+  m.id = 'wb-modal';
   m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto';
   m.innerHTML = `
     <div style="background:var(--card);border:1px solid var(--border2);border-radius:var(--radius);padding:24px;width:100%;max-width:460px;box-shadow:var(--shadow)">
-      <div style="font-family:var(--serif);font-size:20px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text);margin-bottom:20px">↑ Neue Auslagerung</div>
+      <div style="font-family:var(--serif);font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:20px">↑ Warenausgang</div>
       <div class="form-group">
-        <label>Aus Silo *</label>
-        <select id="aus-silo" onchange="auslagernUpdateBestand()">
+        <label>Kontrakt *</label>
+        <select id="wb-kontrakt" onchange="wbKontraktWahl('aus')">
+          <option value="">– Kontrakt wählen –</option>${kontraktOpts}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Silo *</label>
+        <select id="wb-silo" onchange="wbSiloInfo()">
           <option value="">– Silo wählen –</option>${siloOpts}
         </select>
       </div>
-      <div id="aus-bestand-info" style="font-size:11px;color:var(--gold);letter-spacing:1px;margin:-8px 0 12px;display:none"></div>
+      <div id="wb-bestand-info" style="font-size:11px;color:var(--gold);letter-spacing:1px;margin:-8px 0 12px;display:none"></div>
       <div class="form-group">
         <label>Artikel *</label>
-        <select id="aus-artikel"><option value="">– wählen –</option>${artOpts}</select>
+        <select id="wb-artikel"><option value="">– wählen –</option>${artOpts}</select>
       </div>
       <div class="form-group">
         <label>Menge (t) *</label>
-        <input type="number" id="aus-menge" min="0.001" step="0.001" placeholder="z.B. 50.000">
-      </div>
-      <div class="form-group">
-        <label>Kontrakt</label>
-        <select id="aus-kontrakt" onchange="auslagernKontraktWahl()">
-          <option value="">– kein Kontrakt –</option>${kontraktOpts}
-        </select>
+        <input type="number" id="wb-menge" min="0.001" step="0.001" placeholder="z.B. 50.000">
       </div>
       <div class="form-group">
         <label>Empfänger</label>
-        <input type="text" id="aus-empfaenger" placeholder="z.B. RWA Magdeburg">
+        <input type="text" id="wb-empfaenger" placeholder="z.B. RWA Magdeburg">
       </div>
       <div class="form-group">
         <label>Beleg-Nr.</label>
-        <input type="text" id="aus-beleg" placeholder="z.B. LS-2026-001">
+        <input type="text" id="wb-beleg" placeholder="z.B. LS-2026-001">
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:10px">
-        <input type="checkbox" id="aus-bio" style="width:18px;height:18px;accent-color:var(--green2)">
+        <input type="checkbox" id="wb-bio" style="width:18px;height:18px;accent-color:var(--green2)">
         <label style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--green2);margin:0">Bio-Ware</label>
       </div>
       <div class="form-group">
         <label>Notiz</label>
-        <input type="text" id="aus-notiz">
+        <input type="text" id="wb-notiz">
       </div>
       <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn btn-amber" style="flex:1" onclick="auslagernSpeichern()">Auslagern bestätigen</button>
-        <button class="btn btn-outline" onclick="document.getElementById('auslagern-modal').remove()">Abbrechen</button>
+        <button class="btn btn-amber" style="flex:1" onclick="wbSpeichern('ausgang')">Ausgang buchen</button>
+        <button class="btn btn-outline" onclick="document.getElementById('wb-modal').remove()">Abbrechen</button>
       </div>
     </div>`;
   document.body.appendChild(m);
-  if(preSiloId) auslagernUpdateBestand();
 }
 
-function auslagernUpdateBestand() {
-  const siloId = document.getElementById('aus-silo')?.value;
-  const info = document.getElementById('aus-bestand-info');
+function wareneingangsDialog() {
+  const artOpts = state.artikel.filter(a=>a.aktiv).map(a=>
+    `<option value="${a.id}">${escapeHtml(a.name)} (${a.einheit})</option>`).join('');
+  const kontaktOpts = state.kontakte.filter(k=>k.aktiv).map(k=>
+    `<option value="${k.id}">${escapeHtml(k.name)}</option>`).join('');
+
+  const m = document.createElement('div');
+  m.id = 'wb-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto';
+  m.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border2);border-radius:var(--radius);padding:24px;width:100%;max-width:460px;box-shadow:var(--shadow)">
+      <div style="font-family:var(--serif);font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green2);margin-bottom:20px">↓ Wareneingang</div>
+      <div class="form-group">
+        <label>Artikel *</label>
+        <select id="wb-artikel"><option value="">– wählen –</option>${artOpts}</select>
+      </div>
+      <div class="form-group">
+        <label>Menge (t) *</label>
+        <input type="number" id="wb-menge" min="0.001" step="0.001" placeholder="z.B. 50.000">
+      </div>
+      <div class="form-group">
+        <label>Lieferant</label>
+        <select id="wb-kontakt">
+          <option value="">– kein Kontakt –</option>${kontaktOpts}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Beleg-Nr.</label>
+        <input type="text" id="wb-beleg" placeholder="z.B. RE-2026-001">
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="wb-bio" style="width:18px;height:18px;accent-color:var(--green2)">
+        <label style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--green2);margin:0">Bio-Ware</label>
+      </div>
+      <div class="form-group">
+        <label>Notiz</label>
+        <input type="text" id="wb-notiz">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-green" style="flex:1" onclick="wbSpeichern('eingang')">Eingang buchen</button>
+        <button class="btn btn-outline" onclick="document.getElementById('wb-modal').remove()">Abbrechen</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+}
+
+function wbSiloInfo() {
+  const siloId = document.getElementById('wb-silo')?.value;
+  const info   = document.getElementById('wb-bestand-info');
   if(!siloId || !info) return;
-  const bT = (getSiloBestand(siloId)/1000).toFixed(2);
+  const bT     = (getSiloBestand(siloId)/1000).toFixed(2);
   const kultur = getSiloKultur(siloId) || '–';
   info.style.display = 'block';
-  info.textContent = `Bestand Silo ${siloId}: ${bT} t · ${kultur}`;
-  // Artikel vorauswählen passend zur Silo-Kultur
-  const artSel = document.getElementById('aus-artikel');
+  info.textContent   = `Bestand Silo ${siloId}: ${bT} t · ${kultur}`;
+  const artSel = document.getElementById('wb-artikel');
   if(artSel && artSel.value === '') {
-    const match = state.artikel.find(a => a.aktiv && kultur && a.name.toLowerCase().includes(kultur.split(' ')[0].toLowerCase()));
+    const match = state.artikel.find(a=>a.aktiv && kultur && a.name.toLowerCase().includes(kultur.split(' ')[0].toLowerCase()));
     if(match) artSel.value = match.id;
   }
 }
 
-function auslagernKontraktWahl() {
-  const kontraktId = parseInt(document.getElementById('aus-kontrakt')?.value);
+function wbKontraktWahl() {
+  const kontraktId = parseInt(document.getElementById('wb-kontrakt')?.value);
   if(!kontraktId) return;
-  const k = state.kontrakte.find(x=>x.id===kontraktId);
+  const k  = state.kontrakte.find(x=>x.id===kontraktId);
   if(!k) return;
-  // Empfänger aus Kontrakt-Kontakt
   const kt = state.kontakte.find(c=>c.id===k.kontakt_id);
-  const empfEl = document.getElementById('aus-empfaenger');
+  const empfEl = document.getElementById('wb-empfaenger');
   if(empfEl && kt && !empfEl.value) empfEl.value = kt.name;
-  // Artikel vorauswählen
-  if(k.artikel_id) {
-    const artEl = document.getElementById('aus-artikel');
-    if(artEl) artEl.value = k.artikel_id;
-  }
-  // Bio
-  if(k.bio) document.getElementById('aus-bio').checked = true;
+  if(k.artikel_id) { const el = document.getElementById('wb-artikel'); if(el) el.value = k.artikel_id; }
+  if(k.bio) document.getElementById('wb-bio').checked = true;
 }
 
-async function auslagernSpeichern() {
-  const siloId   = document.getElementById('aus-silo')?.value;
-  const artikelId= parseInt(document.getElementById('aus-artikel')?.value);
-  const mengeT   = parseFloat(document.getElementById('aus-menge')?.value);
-  const kontraktId = parseInt(document.getElementById('aus-kontrakt')?.value) || null;
-  const empfaenger = document.getElementById('aus-empfaenger')?.value.trim();
-  const belegNr    = document.getElementById('aus-beleg')?.value.trim();
-  const bio        = document.getElementById('aus-bio')?.checked || false;
-  const notiz      = document.getElementById('aus-notiz')?.value.trim();
+async function wbSpeichern(typ) {
+  const artikelId  = parseInt(document.getElementById('wb-artikel')?.value);
+  const mengeT     = parseFloat(document.getElementById('wb-menge')?.value);
+  const bio        = document.getElementById('wb-bio')?.checked || false;
+  const belegNr    = document.getElementById('wb-beleg')?.value.trim();
+  const notiz      = document.getElementById('wb-notiz')?.value.trim();
 
-  if(!siloId) { showToast('⚠ Bitte Silo wählen','error'); return; }
-  if(!artikelId || isNaN(mengeT) || mengeT <= 0) { showToast('⚠ Bitte Artikel und Menge angeben','error'); return; }
-  const mengeKg = mengeT * 1000;
-  const bestandKg = getSiloBestand(siloId);
-  if(mengeKg > bestandKg + 0.01) {
-    showToast('⚠ Menge überschreitet Bestand von '+(bestandKg/1000).toFixed(2)+' t','error'); return;
+  if(!artikelId || isNaN(mengeT) || mengeT <= 0) {
+    showToast('⚠ Bitte Artikel und Menge angeben','error'); return;
   }
-  const bewegung = { typ:'ausgang', artikelId, siloVonId:siloId, mengeKg, empfaenger, belegNr, bio,
-    kontraktId, notiz, erstelltVon: state.currentUser?.id||null };
+
+  let siloId = null, kontraktId = null, empfaenger = '';
+
+  if(typ === 'ausgang') {
+    siloId      = document.getElementById('wb-silo')?.value;
+    kontraktId  = parseInt(document.getElementById('wb-kontrakt')?.value) || null;
+    empfaenger  = document.getElementById('wb-empfaenger')?.value.trim();
+    if(!siloId)     { showToast('⚠ Bitte Silo wählen','error'); return; }
+    if(!kontraktId) { showToast('⚠ Bitte Kontrakt wählen','error'); return; }
+    const bestandKg = getSiloBestand(siloId);
+    if(mengeT*1000 > bestandKg + 0.01) {
+      showToast('⚠ Menge überschreitet Silo-Bestand von '+(bestandKg/1000).toFixed(2)+' t','error'); return;
+    }
+  } else {
+    const kontaktId = parseInt(document.getElementById('wb-kontakt')?.value) || null;
+    const kt = kontaktId ? state.kontakte.find(c=>c.id===kontaktId) : null;
+    empfaenger = kt ? kt.name : '';
+  }
+
+  const bewegung = { typ, artikelId, siloVonId: siloId, mengeKg: mengeT*1000,
+    empfaenger, belegNr, bio, kontraktId, notiz, erstelltVon: state.currentUser?.id||null };
   try {
     const saved = await db.insertWarenbewegung(bewegung);
     state.warenbewegungen.unshift(saved);
-    document.getElementById('auslagern-modal')?.remove();
-    showToast('✓ '+mengeT.toFixed(3)+' t ausgelagert');
+    document.getElementById('wb-modal')?.remove();
+    showToast('✓ '+mengeT.toFixed(3)+' t als '+typ+' gebucht');
     if(adminTab==='warenausgang') renderWarenausgang();
     renderSiloManagement();
   } catch(e) { showToast('⚠ '+e.message,'error'); }
 }
+
+// Alias für Silo-Detail-Hinweis (rückwärtskompatibel)
+function auslagernDialog(preSiloId) { warenausgangsDialog(); }
 
 async function deleteWarenbewegung(id) {
   if(!confirm('Warenbewegung wirklich löschen?')) return;
@@ -4475,66 +4519,50 @@ const FIRMA_IBAN2 = 'IBAN: DE10 7016 9509 0000 3126 14';
 const FIRMA_BIC2 = 'BIC: GENODEF1PEI';
 
 function renderWarenausgang() {
-  const offen = state.lieferungen.filter(l=>l.status==='offen');
-  const abg   = state.lieferungen.filter(l=>l.status==='abgeschlossen');
-  const nettoT = abg.reduce((s,l)=>s+(l.vollgewicht&&l.leergewicht?l.vollgewicht-l.leergewicht:0),0)/1000;
-  const lRow = (l) => {
-    const n = (l.vollgewicht&&l.leergewicht) ? ((l.vollgewicht-l.leergewicht)/1000).toFixed(2)+' t' : '–';
-    const isOffen = l.status==='offen';
-    const bc = isOffen ? 'var(--amber)' : 'var(--border)';
-    return '<div class="card" style="margin-bottom:10px;border-color:'+bc+'">'
-      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">'
-      +'<div><div style="font-size:13px;font-weight:700;color:var(--text)">'+l.nr+' · '+new Date(l.datum).toLocaleDateString('de-DE')+'</div>'
-      +'<div style="font-size:12px;color:#5a7a5a;margin-top:2px">'+l.kaeufer_name+(l.kennzeichen?' · '+l.kennzeichen:'')+'</div>'
-      +'<div style="font-size:12px;color:#5a7a5a">'+l.fruchtart+'</div></div>'
-      +'<div style="text-align:right;flex-shrink:0"><div style="font-size:16px;font-weight:700;color:#2c2c2c">'+n+'</div>'
-      +'<span class="badge badge-'+(isOffen?'offen':'fertig')+'">'+(isOffen?'OFFEN':'FERTIG')+'</span></div></div>'
-      +'<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'
-      +(isOffen?'<button class="btn btn-sm" style="background:var(--blue);color:#fff;border:none" onclick="lieferungAbschliessen('+l.id+')">⚖ Vollgewicht eingeben</button>':'')
-      +'<button class="btn btn-sm btn-outline" onclick="lieferungPDF('+l.id+')">📄 Lieferschein</button>'
-      +'</div></div>';
-  };
-  // Warenbewegungen (direkte Auslagerungen)
-  const bewegungen = state.warenbewegungen.filter(w=>w.typ==='ausgang');
-  const bewegungT  = bewegungen.reduce((s,w)=>s+(w.menge_kg||0),0)/1000;
+  const alle    = state.warenbewegungen.slice().sort((a,b)=>new Date(b.erstellt_am)-new Date(a.erstellt_am));
+  const ausgaenge = alle.filter(w=>w.typ==='ausgang');
+  const eingaenge = alle.filter(w=>w.typ==='eingang');
+  const ausT = ausgaenge.reduce((s,w)=>s+(w.menge_kg||0),0)/1000;
+  const einT = eingaenge.reduce((s,w)=>s+(w.menge_kg||0),0)/1000;
+
   const bRow = (w) => {
-    const art = state.artikel.find(a=>a.id===w.artikel_id);
-    const mT  = ((w.menge_kg||0)/1000).toFixed(3);
+    const isAus = w.typ === 'ausgang';
+    const art   = state.artikel.find(a=>a.id===w.artikel_id);
+    const kontr = state.kontrakte.find(k=>k.id===w.kontrakt_id);
+    const mT    = ((w.menge_kg||0)/1000).toFixed(3);
     const datum = new Date(w.erstellt_am).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'});
-    return '<div class="card" style="margin-bottom:6px">'
+    const pfeil = isAus ? '↑' : '↓';
+    const farbe = isAus ? 'var(--amber)' : 'var(--green2)';
+    const bordFarbe = isAus ? 'var(--amber)' : 'var(--green)';
+    return '<div class="card" style="margin-bottom:6px;border-left:3px solid '+bordFarbe+'">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
       +'<div style="flex:1;min-width:0">'
-      +'<div style="font-size:13px;font-weight:600;color:var(--text)">'+(art?art.name:'–')+(w.silo_von_id?' · Silo '+w.silo_von_id:'')+'</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+(w.empfaenger||'kein Empfänger')+(w.beleg_nr?' · '+w.beleg_nr:'')+'</div>'
-      +(w.notiz?'<div style="font-size:11px;color:var(--text3)">'+escapeHtml(w.notiz)+'</div>':'')
+      +'<div style="font-size:12px;font-weight:700;letter-spacing:1px;color:'+farbe+';text-transform:uppercase">'
+      +pfeil+' '+(isAus?'Ausgang':'Eingang')+(w.silo_von_id?' · Silo '+w.silo_von_id:'')+(w.bio?' · <span style="color:var(--green2)">BIO</span>':'')+'</div>'
+      +'<div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+(art?escapeHtml(art.name):'–')+'</div>'
+      +(kontr?'<div style="font-size:11px;color:var(--gold);margin-top:1px">Kontrakt '+escapeHtml(kontr.nummer)+'</div>':'')
+      +'<div style="font-size:11px;color:var(--text3);margin-top:1px">'
+      +(w.empfaenger?escapeHtml(w.empfaenger):'')+(w.beleg_nr?' · '+escapeHtml(w.beleg_nr):'')
+      +(w.notiz?' · '+escapeHtml(w.notiz):'')+'</div>'
       +'</div>'
       +'<div style="text-align:right;flex-shrink:0">'
-      +'<div style="font-size:15px;font-weight:700;color:var(--gold)">'+mT+' t</div>'
+      +'<div style="font-size:16px;font-weight:700;color:'+farbe+'">'+mT+' t</div>'
       +'<div style="font-size:10px;color:var(--text3)">'+datum+'</div>'
       +'<button class="btn btn-sm" style="background:none;border:1px solid var(--border2);color:var(--red);margin-top:4px;padding:3px 8px" onclick="deleteWarenbewegung('+w.id+')">✕</button>'
       +'</div></div></div>';
   };
 
   document.getElementById('admintab').innerHTML = ''
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
-    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1;min-width:240px">'
-    +'<div class="stat-box"><div class="stat-val" style="font-size:22px;color:var(--amber)">'+offen.length+'</div><div class="stat-label">Lieferungen offen</div></div>'
-    +'<div class="stat-box"><div class="stat-val" style="font-size:22px;color:var(--green2)">'+abg.length+'</div><div class="stat-label">Lieferungen fertig</div></div>'
-    +'<div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--text)">'+(nettoT+bewegungT).toFixed(1)+'</div><div class="stat-label">t gesamt ausgelagert</div></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">'
+    +'<div class="stat-box"><div class="stat-val" style="font-size:20px;color:var(--green2)">'+einT.toFixed(1)+'</div><div class="stat-label">t Eingang</div></div>'
+    +'<div class="stat-box"><div class="stat-val" style="font-size:20px;color:var(--amber)">'+ausT.toFixed(1)+'</div><div class="stat-label">t Ausgang</div></div>'
+    +'<div class="stat-box"><div class="stat-val" style="font-size:20px;color:var(--text)">'+(einT-ausT).toFixed(1)+'</div><div class="stat-label">t Saldo</div></div>'
     +'</div>'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-    +'<button class="btn btn-amber" onclick="auslagernDialog(null)">↑ Neue Auslagerung</button>'
-    +'<button class="btn btn-primary" onclick="neueLieferungDialog()">+ Neue Lieferung (Waage)</button>'
-    +'</div></div>'
-
-    // Direkte Auslagerungen (warenbewegungen)
-    +'<div class="section-label" style="margin-bottom:8px">Direkte Auslagerungen ('+bewegungen.length+' · '+bewegungT.toFixed(1)+' t)</div>'
-    +(bewegungen.length ? bewegungen.map(bRow).join('') : '<div class="empty-state" style="padding:20px">Noch keine Auslagerungen. Nutze den „↑ Neue Auslagerung"-Button oben.</div>')
-
-    // Lieferungen (LKW-Waage-Workflow)
-    +(offen.length||abg.length ? '<div class="section-label" style="margin-top:16px;margin-bottom:8px">Lieferungen (LKW-Waage)</div>' : '')
-    +(offen.length?'<div class="section-label" style="color:var(--amber);font-size:9px">⚠ Offen ('+offen.length+')</div>'+offen.map(lRow).join(''):'')
-    +(abg.length?'<div class="section-label" style="margin-top:8px;font-size:9px">✓ Abgeschlossen ('+abg.length+')</div>'+abg.map(lRow).join(''):'');
+    +'<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">'
+    +'<button class="btn btn-green" onclick="wareneingangsDialog()">↓ Wareneingang</button>'
+    +'<button class="btn btn-amber" onclick="warenausgangsDialog()">↑ Warenausgang</button>'
+    +'</div>'
+    +(alle.length ? alle.map(bRow).join('') : '<div class="empty-state" style="padding:20px">Noch keine Warenbewegungen erfasst.</div>');
 }
 
 function renderArtikel() {
