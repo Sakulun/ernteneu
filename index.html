@@ -1698,8 +1698,7 @@ async function bootApp() {
     state.warenbewegungen = await db.getWarenbewegungen().catch(e => { console.warn('getWarenbewegungen:', e); return []; });
     state.kontakte = await db.getKontakte().catch(e => { console.warn('getKontakte:', e); return []; });
     state.kontrakte = await db.getKontrakte().catch(e => { console.warn('getKontrakte:', e); return []; });
-    const wlRow = await sb.from('waage_live').select('*').eq('id',1).single().catch(()=>({data:null}));
-    state.waageLive = wlRow?.data || null;
+    try { const { data: wlData } = await sb.from('waage_live').select('*').eq('id',1).single(); state.waageLive = wlData || null; } catch(e) { state.waageLive = null; }
     const lnrs = state.lieferungen.map(l=>parseInt((l.nr||'').replace('L-',''))).filter(n=>!isNaN(n));
     state.nextLieferNr = lnrs.length ? Math.max(...lnrs)+1 : 1;
 
@@ -1744,8 +1743,7 @@ async function bootApp() {
         if(tbl === 'kontakte') { state.kontakte = await db.getKontakte().catch(()=>[]); return; }
         if(tbl === 'kontrakte') { state.kontrakte = await db.getKontrakte().catch(()=>[]); return; }
         if(tbl === 'waage_live') {
-          const { data } = await sb.from('waage_live').select('*').eq('id',1).single();
-          state.waageLive = data || null;
+          try { const { data } = await sb.from('waage_live').select('*').eq('id',1).single(); state.waageLive = data || null; } catch(e) {}
           updateWaageWidget();
           if(adminTab === 'warenausgang') renderWaageBar();
           return;
