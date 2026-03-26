@@ -1649,6 +1649,7 @@ const db = {
       .on('postgres_changes', {event:'*', schema:'public', table:'artikel'}, onChange)
       .on('postgres_changes', {event:'*', schema:'public', table:'kontakte'}, onChange)
       .on('postgres_changes', {event:'*', schema:'public', table:'kontrakte'}, onChange)
+      .on('postgres_changes', {event:'*', schema:'public', table:'waage_live'}, onChange)
       .subscribe((status, err) => {
         const dot = document.getElementById('topbar-sync');
         if(status === 'SUBSCRIBED') {
@@ -1697,6 +1698,8 @@ async function bootApp() {
     state.warenbewegungen = await db.getWarenbewegungen().catch(e => { console.warn('getWarenbewegungen:', e); return []; });
     state.kontakte = await db.getKontakte().catch(e => { console.warn('getKontakte:', e); return []; });
     state.kontrakte = await db.getKontrakte().catch(e => { console.warn('getKontrakte:', e); return []; });
+    const wlRow = await sb.from('waage_live').select('*').eq('id',1).single().catch(()=>({data:null}));
+    state.waageLive = wlRow?.data || null;
     const lnrs = state.lieferungen.map(l=>parseInt((l.nr||'').replace('L-',''))).filter(n=>!isNaN(n));
     state.nextLieferNr = lnrs.length ? Math.max(...lnrs)+1 : 1;
 
@@ -1740,6 +1743,13 @@ async function bootApp() {
         if(tbl === 'artikel') { state.artikel = await db.getArtikel().catch(()=>[]); return; }
         if(tbl === 'kontakte') { state.kontakte = await db.getKontakte().catch(()=>[]); return; }
         if(tbl === 'kontrakte') { state.kontrakte = await db.getKontrakte().catch(()=>[]); return; }
+        if(tbl === 'waage_live') {
+          const { data } = await sb.from('waage_live').select('*').eq('id',1).single();
+          state.waageLive = data || null;
+          updateWaageWidget();
+          if(adminTab === 'warenausgang') renderWaageBar();
+          return;
+        }
         if(tbl === 'fuhren') {
           state.fuhren = await db.getFuhren().catch(()=>[]);
           const nrs2 = state.fuhren.map(f=>parseInt((f.nr||'').replace('F-',''))).filter(n=>!isNaN(n));
@@ -1978,6 +1988,7 @@ const state = {
   warenbewegungen: [],
   kontakte: [],
   kontrakte: [],
+  waageLive: null,   // { gewicht_kg, status, einheit, aktualisiert }
   nextId: 1, nextNr: 1, lastFeldId: null,
 };
 
@@ -4216,7 +4227,7 @@ function renderSiloDetail(siloId) {
 }
 
 // ─── AUSLAGERN ───
-function warenausgangsDialog() {
+function warenausgangsDialog(preGewichtKg) {
   const silosAlle = state.silos.sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true}));
   const siloOpts = silosAlle.map(s => {
     const bT = (getSiloBestand(s.id)/1000).toFixed(1);
@@ -4257,7 +4268,8 @@ function warenausgangsDialog() {
       </div>
       <div class="form-group">
         <label>Menge (t) *</label>
-        <input type="number" id="wb-menge" min="0.001" step="0.001" placeholder="z.B. 50.000">
+        <input type="number" id="wb-menge" min="0.001" step="0.001" placeholder="z.B. 50.000"
+          value="${preGewichtKg ? (preGewichtKg/1000).toFixed(3) : ''}">
       </div>
       <div class="form-group">
         <label>Empfänger</label>
@@ -4410,6 +4422,78 @@ async function deleteWarenbewegung(id) {
   } catch(e) { showToast('⚠ '+e.message,'error'); }
 }
 
+// ── Waage Live Widget ──────────────────────────────────────────────────────────
+
+function waageWidgetHTML(targetField) {
+  const w = state.waageLive;
+  const isOnline  = w && w.status !== 'offline';
+  const isStable  = w && w.status === 'stable';
+  const isUnstable= w && w.status === 'unstable';
+  const dotColor  = isStable ? 'var(--green2)' : isUnstable ? 'var(--amber)' : 'var(--text3)';
+  const dotChar   = isStable ? '●' : isUnstable ? '◉' : '○';
+  const gewichtStr= isOnline ? Math.round(w.gewicht_kg).toLocaleString('de-DE')+' kg' : '–';
+  const label     = isStable ? 'STABIL' : isUnstable ? 'IN BEWEGUNG' : 'NICHT VERBUNDEN';
+  const btnStyle  = isStable
+    ? 'background:var(--green);color:#fff;border:none;cursor:pointer'
+    : 'background:var(--bg3);color:var(--text3);border:1px solid var(--border2);cursor:not-allowed';
+  return `<div id="waage-live-widget-${targetField}" style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;margin:-6px 0 12px;font-family:var(--mono)">
+    <span style="color:${dotColor};font-size:14px">${dotChar}</span>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:700;color:var(--text)">${gewichtStr}</div>
+      <div style="font-size:9px;letter-spacing:1.5px;color:${dotColor}">${label}</div>
+    </div>
+    <button class="btn btn-sm" style="${btnStyle};padding:6px 12px;font-size:11px;border-radius:6px;letter-spacing:1px"
+      onclick="gewichtUebernehmen('${targetField}')" ${isStable?'':'disabled'}>
+      ↕ ÜBERNEHMEN
+    </button>
+  </div>`;
+}
+
+function updateWaageWidget() {
+  // Alle offenen Widgets aktualisieren (Dialoge)
+  ['leer','voll'].forEach(field => {
+    const el = document.getElementById('waage-live-widget-'+field);
+    if(el) el.outerHTML = waageWidgetHTML(field);
+  });
+}
+
+function renderWaageBar() {
+  const el = document.getElementById('waage-bar');
+  if(!el) return;
+  const w = state.waageLive;
+  const isOnline  = w && w.status !== 'offline';
+  const isStable  = w && w.status === 'stable';
+  const dotColor  = isStable ? 'var(--green2)' : isOnline ? 'var(--amber)' : 'var(--text3)';
+  const dotChar   = isStable ? '●' : isOnline ? '◉' : '○';
+  const gewichtStr= isOnline ? Math.round(w.gewicht_kg).toLocaleString('de-DE')+' kg' : 'nicht verbunden';
+  const label     = isStable ? 'Stabil' : isOnline ? 'In Bewegung' : 'Waage offline';
+
+  if(isStable) {
+    el.innerHTML = `<span style="color:${dotColor}">${dotChar}</span>`
+      + ` <span style="color:var(--text);font-weight:700">${gewichtStr}</span>`
+      + ` <span style="color:var(--text3);font-size:10px;letter-spacing:1px">${label}</span>`
+      + ` <button class="btn btn-sm btn-green" style="margin-left:8px;padding:5px 12px;font-size:11px" onclick="warenausgangsDialog(${Math.round(w.gewicht_kg)})">↕ Übernehmen</button>`;
+  } else {
+    el.innerHTML = `<span style="color:${dotColor}">${dotChar}</span>`
+      + ` <span style="color:var(--text3)">${gewichtStr}</span>`
+      + ` <span style="color:var(--text3);font-size:10px;letter-spacing:1px">${label}</span>`
+      + (isOnline ? '' : ` <button class="btn btn-sm btn-outline" style="margin-left:8px;padding:5px 12px;font-size:11px" onclick="warenausgangsDialog()">Manuelle Eingabe</button>`);
+  }
+}
+
+function gewichtUebernehmen(feld) {
+  if(!state.waageLive || state.waageLive.status !== 'stable') return;
+  const inputId = feld === 'leer' ? 'l-leer' : feld === 'voll' ? 'l-voll' : null;
+  if(!inputId) return;
+  const el = document.getElementById(inputId);
+  if(el) {
+    el.value = Math.round(state.waageLive.gewicht_kg).toLocaleString('de-DE');
+    fmtGewicht(el);
+    el.dispatchEvent(new Event('input'));
+  }
+  try { updNetto('lief'); } catch(e) {}
+}
+
 async function dropFuhreOnSilo(event, siloId) {
   event.preventDefault();
   const fId = _dragFuhreId;
@@ -4558,11 +4642,14 @@ function renderWarenausgang() {
     +'<div class="stat-box"><div class="stat-val" style="font-size:20px;color:var(--amber)">'+ausT.toFixed(1)+'</div><div class="stat-label">t Ausgang</div></div>'
     +'<div class="stat-box"><div class="stat-val" style="font-size:20px;color:var(--text)">'+(einT-ausT).toFixed(1)+'</div><div class="stat-label">t Saldo</div></div>'
     +'</div>'
+    // Waage Live Bar
+    +'<div id="waage-bar" style="display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-family:var(--mono);font-size:12px;flex-wrap:wrap"></div>'
     +'<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">'
     +'<button class="btn btn-green" onclick="wareneingangsDialog()">↓ Wareneingang</button>'
     +'<button class="btn btn-amber" onclick="warenausgangsDialog()">↑ Warenausgang</button>'
     +'</div>'
     +(alle.length ? alle.map(bRow).join('') : '<div class="empty-state" style="padding:20px">Noch keine Warenbewegungen erfasst.</div>');
+  renderWaageBar();
 }
 
 function renderArtikel() {
@@ -5082,6 +5169,7 @@ function neueLieferungDialog() {
     +'<input type="checkbox" id="l-bio" style="width:18px;height:18px;accent-color:var(--green2)">'
     +'<label style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--green2);margin:0">Bio-Ware</label></div>'
     +'<div class="form-group"><label>Leergewicht (kg) *</label><input type="text" inputmode="numeric" id="l-leer" placeholder="14.500" oninput="fmtGewicht(this)"></div>'
+    +waageWidgetHTML('leer')
     +'<div class="form-group"><label>Notiz</label><input type="text" id="l-notiz"></div>'
     +'<div style="display:flex;gap:8px;margin-top:8px">'
     +'<button class="btn btn-primary" style="flex:1" onclick="lieferungSpeichern()">Lieferung anlegen</button>'
@@ -5151,6 +5239,7 @@ function lieferungAbschliessen(id) {
     +'<div class="form-group"><label>Vollgewicht (kg) *</label>'
     +'<input type="text" inputmode="numeric" id="l-voll" placeholder="38.500" style="font-size:20px;font-weight:700"'
     +' oninput="fmtGewicht(this);(()=>{const v=parseGewicht(this.value);const el=document.getElementById(\'liefer-netto-val\');if(!el)return;if(v&&'+l.leergewicht+'&&v>'+l.leergewicht+'){el.textContent=((v-'+l.leergewicht+')/1000).toFixed(2)+\' t\';el.style.color=\'var(--green2)\'}else{el.textContent=\'–\';el.style.color=\'var(--text3)\'}})()"></div>'
+    +waageWidgetHTML('voll')
     +'<div style="background:#e8ece8;border-radius:8px;padding:12px;text-align:center;margin-bottom:16px">'
     +'<div style="font-size:11px;color:#5a7a5a">Netto</div>'
     +'<div id="liefer-netto-val" style="font-size:26px;font-weight:700;color:#5a7a5a">–</div></div>'
