@@ -2336,6 +2336,7 @@ function renderAbfahrerOffen() {
             oninput="fmtGewicht(this);updNetto(${f.id})">
         </div>
       </div>
+      ${waageFuhreWidgetHTML(f.id)}
       <div class="netto-display">
         <div class="netto-label">Netto</div>
         <div class="netto-val" id="netto-${f.id}" style="font-size:28px">—</div>
@@ -4448,10 +4449,15 @@ function waageWidgetHTML(targetField) {
 }
 
 function updateWaageWidget() {
-  // Alle offenen Widgets aktualisieren (Dialoge)
+  // Dialog-Widgets (Lieferung)
   ['leer','voll'].forEach(field => {
     const el = document.getElementById('waage-live-widget-'+field);
     if(el) el.outerHTML = waageWidgetHTML(field);
+  });
+  // Fuhre-Widgets (Abfahrer)
+  document.querySelectorAll('[id^="waage-fuhre-widget-"]').forEach(el => {
+    const fuhreId = parseInt(el.id.replace('waage-fuhre-widget-',''));
+    if(fuhreId) el.outerHTML = waageFuhreWidgetHTML(fuhreId);
   });
 }
 
@@ -4479,10 +4485,10 @@ function renderWaageBar() {
   }
 }
 
-function gewichtUebernehmen(feld) {
+function gewichtUebernehmen(targetId) {
   if(!state.waageLive || state.waageLive.status !== 'stable') return;
-  const inputId = feld === 'leer' ? 'l-leer' : feld === 'voll' ? 'l-voll' : null;
-  if(!inputId) return;
+  // Support legacy 'leer'/'voll' shorthand for Lieferungs-Dialoge
+  const inputId = targetId === 'leer' ? 'l-leer' : targetId === 'voll' ? 'l-voll' : targetId;
   const el = document.getElementById(inputId);
   if(el) {
     el.value = Math.round(state.waageLive.gewicht_kg).toLocaleString('de-DE');
@@ -4490,6 +4496,27 @@ function gewichtUebernehmen(feld) {
     el.dispatchEvent(new Event('input'));
   }
   try { updNetto('lief'); } catch(e) {}
+}
+
+function waageFuhreWidgetHTML(fuhreId) {
+  const w = state.waageLive;
+  const isStable   = w && w.status === 'stable';
+  const isUnstable = w && w.status === 'unstable';
+  const isOnline   = w && w.status !== 'offline';
+  const dotColor   = isStable ? 'var(--green2)' : isUnstable ? 'var(--amber)' : 'var(--text3)';
+  const dotChar    = isStable ? '●' : isUnstable ? '◉' : '○';
+  const gewichtStr = isOnline ? Math.round(w.gewicht_kg).toLocaleString('de-DE')+' kg' : 'nicht verbunden';
+  const label      = isStable ? 'STABIL' : isUnstable ? 'IN BEWEGUNG' : 'OFFLINE';
+  const btnStyle   = isStable
+    ? 'background:var(--green);color:#fff;border:none;cursor:pointer;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:700;letter-spacing:1px'
+    : 'background:var(--bg3);color:var(--text3);border:1px solid var(--border2);cursor:not-allowed;border-radius:6px;padding:6px 10px;font-size:11px';
+  return `<div id="waage-fuhre-widget-${fuhreId}" style="display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-family:var(--mono);flex-wrap:wrap">
+    <span style="color:${dotColor}">${dotChar}</span>
+    <span style="font-size:13px;font-weight:700;color:var(--text);flex:1">${gewichtStr}</span>
+    <span style="font-size:9px;letter-spacing:1.5px;color:${dotColor}">${label}</span>
+    <button style="${btnStyle}" onclick="gewichtUebernehmen('voll-${fuhreId}')" ${isStable?'':'disabled'}>→ VOLLGEWICHT</button>
+    <button style="${btnStyle}" onclick="gewichtUebernehmen('leer-${fuhreId}')" ${isStable?'':'disabled'}>→ LEERGEWICHT</button>
+  </div>`;
 }
 
 async function dropFuhreOnSilo(event, siloId) {
