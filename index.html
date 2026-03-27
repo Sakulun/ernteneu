@@ -285,18 +285,26 @@ select option:disabled{color:#5a7a5a}
 
 /* ── Desktop (>1024px): full sidebar, generous spacing ── */
 @media (min-width: 1025px) {
-  #admin-main-inner { padding: 24px 28px; }
+  #admin-main-inner { padding: 24px 28px; max-width: 1280px; }
   .stats-grid { grid-template-columns: repeat(4, 1fr); }
   .card { padding: 18px 20px; }
   .form-group label { font-size: 12px; }
-  .form-group input, .form-group select { font-size: 14px; padding: 9px 12px; }
+  .form-group input, .form-group select { font-size: 15px; padding: 10px 13px; }
+  body { font-size: 14px !important; }
+  .stat-val { font-size: 34px !important; }
+  .stat-label { font-size: 10px !important; }
+  .card-title { font-size: 18px !important; }
+  .fuhre-nr { font-size: 13px !important; }
+  .fk, .fv { font-size: 13px !important; }
+  .schlag-name { font-size: 14px !important; }
+  .sidebar-btn { font-size: 13px !important; }
 }
 
 /* ── Wide (>1440px): 2-col dashboard layout ── */
 @media (min-width: 1440px) {
-  #admin-main-inner { padding: 28px 36px; }
-  .stats-grid { grid-template-columns: repeat(4, 1fr); gap: 12px; }
-  .stat-val { font-size: 32px !important; }
+  #admin-main-inner { padding: 28px 36px; max-width: 1400px; }
+  .stats-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .stat-val { font-size: 38px !important; }
 }
 
 /* ── Mobile (<640px): optimized for touch ── */
@@ -2654,16 +2662,21 @@ function renderAdminFuhren() {
     const feld = getFeld(f.feldId);
     const n = netto(f);
     const isVerified = f.verifiziert;
-    return `<div class="card" style="margin-bottom:10px;border-color:${isVerified?'var(--green)':'var(--border)'}">
+    const fr = getFruchtFarbe(f.fruchtart);
+    return `<div class="card" style="margin-bottom:10px;border-color:${isVerified?'var(--green)':'var(--border)'};border-left:4px solid ${fr.dot}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="min-width:0">
           <div style="font-size:12px;font-weight:600;color:var(--text)">${f.nr} · ${fmtDate(f.zeit)} ${fmtTime(f.zeit)}</div>
-          <div style="font-size:11px;color:#5a7a5a;margin-top:2px">${feld.name||'?'} · ${f.fruchtart}</div>
-          <div style="font-size:11px;color:#5a7a5a">${getUser(f.drescherId).name} → ${getUser(f.abfahrerId).name}</div>
+          <div style="font-size:11px;margin-top:2px;display:flex;align-items:center;gap:5px">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${fr.dot};flex-shrink:0"></span>
+            <span style="color:${fr.dot};font-weight:600">${f.fruchtart}</span>
+            <span style="color:var(--text3)">· ${feld.name||'?'}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text2)">${getUser(f.drescherId).name} → ${getUser(f.abfahrerId).name}</div>
         </div>
         <div style="flex-shrink:0;text-align:right">
-          <div style="font-family:var(--serif);font-size:16px;font-weight:600;color:#2c2c2c">${n?kg2t(n):'–'}</div>
-          <div style="font-size:10px;color:#5a7a5a">netto</div>
+          <div style="font-family:var(--serif);font-size:16px;font-weight:600;color:var(--text)">${n?kg2t(n):'–'}</div>
+          <div style="font-size:10px;color:var(--text2)">netto</div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px">
@@ -3819,9 +3832,9 @@ function renderSiloManagement() {
     const r = (sz/2)-9;
     const circ = 2*Math.PI*r;
     const hasFeuchteWarn = state.fuhren.filter(f=>f.siloId===s.id).some(feuchteZuHoch);
-    const fc = overfull?'#ef4444':pct>85?'#e0943a':pct>0?'#4caf6e':'#2a422a';
+    const fc = overfull?'#ef4444':pct>85?'#e0943a':pct>0?'#4caf6e':'#c2c9b9';
     const active = _activeSiloId===s.id;
-    const outerStroke = hasFeuchteWarn ? '#ef4444' : (active?'var(--gold)':'#2a422a');
+    const outerStroke = hasFeuchteWarn ? '#ef4444' : (active?'var(--gold)':'#c2c9b9');
     const sd = (pct/100*circ).toFixed(1)+' '+circ.toFixed(1);
     const cnt = state.fuhren.filter(f=>f.siloId===s.id).length;
     const kl = kultur ? kultur
@@ -3829,10 +3842,10 @@ function renderSiloManagement() {
       .replace('Winterraps','W.Raps').replace('Wintertriticale','W.Triticale')
       .replace('Winterdurum','W.Durum').replace('Winter','W.').replace('Sommer','So.') : '';
     const siloIstBio = getSiloBioStatus(s.id) === 'bio';
-    const strokeC = hasFeuchteWarn ? '#ef4444' : active ? 'var(--gold)' : siloIstBio ? '#16a34a' : '#2a422a';
+    const strokeC = hasFeuchteWarn ? '#ef4444' : active ? 'var(--gold)' : siloIstBio ? '#16a34a' : '#c2c9b9';
     const strokeW = active ? 3 : 1.5;
-    const fillBg = active ? '#e8f4e8' : '#f4f8f4';
-    const pctText = pct>0 ? `<text x="${sz/2}" y="${sz/2+22}" text-anchor="middle" fill="#6a6a6a" font-size="${isBig?11:9}" font-family="monospace">${pct.toFixed(0)}%</text>` : '';
+    const fillBg = active ? '#edf5e8' : '#ffffff';
+    const pctText = pct>0 ? `<text x="${sz/2}" y="${sz/2+22}" text-anchor="middle" fill="#73796c" font-size="${isBig?11:9}" font-family="monospace">${pct.toFixed(0)}%</text>` : '';
     const kulturColor = getFruchtFarbe(kultur).dot;
     const kulturSpan = kl
       ? `<span style="color:${kulturColor};font-size:${isBig?12:10}px;font-weight:600">${kl}</span>`
@@ -3848,8 +3861,8 @@ function renderSiloManagement() {
           <circle cx="${sz/2}" cy="${sz/2}" r="${r}" fill="${fillBg}" stroke="${strokeC}" stroke-width="${strokeW}"/>
           <circle cx="${sz/2}" cy="${sz/2}" r="${r}" fill="none" stroke="${fc}" stroke-width="${isBig?12:9}"
             stroke-dasharray="${sd}" transform="rotate(-90 ${sz/2} ${sz/2})" style="transition:stroke-dasharray .4s"/>
-          <text x="${sz/2}" y="${sz/2-8}" text-anchor="middle" fill="#2c2c2c" font-size="${isBig?18:14}" font-weight="700" font-family="monospace">${s.id}</text>
-          <text x="${sz/2}" y="${sz/2+10}" text-anchor="middle" fill="${fc}" font-size="${isBig?14:11}" font-family="monospace">${fillT.toFixed(1)}t</text>
+          <text x="${sz/2}" y="${sz/2-8}" text-anchor="middle" fill="#191c18" font-size="${isBig?18:14}" font-weight="700" font-family="sans-serif">${s.id}</text>
+          <text x="${sz/2}" y="${sz/2+10}" text-anchor="middle" fill="${pct>0?fc:'#73796c'}" font-size="${isBig?14:11}" font-family="sans-serif">${pct>0?fillT.toFixed(1)+'t':'leer'}</text>
           ${pctText}
         </svg>
       </button>
