@@ -1188,23 +1188,30 @@ select option { background: var(--card) !important; color: var(--text) !importan
   <div class="login-logo">Ernte 2026</div>
   <div class="login-sub">// Ernteerfassung · Kampagne 2026</div>
   <div class="login-card">
-    <h2>Anmelden</h2>
-    <div class="form-group">
-      <label>Benutzername</label>
-      <input type="text" id="login-name" placeholder="Name eingeben" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pw').focus()">
+    <!-- Schritt 1: Benutzer wählen -->
+    <div id="login-step-user">
+      <h2>Wer bist du?</h2>
+      <div id="user-list" class="user-grid"></div>
     </div>
-    <div class="form-group">
-      <label>Passwort</label>
-      <div style="position:relative">
-        <input type="password" id="login-pw" placeholder="Passwort" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:40px">
-        <button onclick="togglePw()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#5a7a5a;cursor:pointer;font-size:14px;padding:0" id="pw-toggle">&#128065;</button>
+    <!-- Schritt 2: Passwort eingeben -->
+    <div id="login-step-pw" style="display:none">
+      <button onclick="loginBack()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:0 0 16px 0;display:flex;align-items:center;gap:6px;font-family:var(--mono)">← Zurück</button>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;padding:12px 14px;background:var(--bg2);border-radius:10px;border:1px solid var(--border)">
+        <span id="login-selected-dot" class="role-dot"></span>
+        <div>
+          <div id="login-selected-name" style="font-weight:600;font-size:14px;color:var(--text)"></div>
+          <div id="login-selected-role" style="font-size:11px;color:var(--text2)"></div>
+        </div>
       </div>
-    </div>
-    <div id="login-error" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none">Benutzername oder Passwort falsch.</div>
-    <button class="btn btn-primary btn-full" onclick="doLogin()">Anmelden</button>
-    <div style="margin-top:16px;padding-top:14px;border-top:1px solid #d8dcd8">
-      <div style="font-size:10px;color:#5a7a5a;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Demo-Zugänge</div>
-      <div id="user-list" style="display:grid;gap:4px"></div>
+      <div class="form-group">
+        <label>Passwort</label>
+        <div style="position:relative">
+          <input type="password" id="login-pw" placeholder="Passwort eingeben" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:40px">
+          <button onclick="togglePw()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0" id="pw-toggle">&#128065;</button>
+        </div>
+      </div>
+      <div id="login-error" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none">Passwort falsch.</div>
+      <button class="btn btn-primary btn-full" onclick="doLogin()">Anmelden</button>
     </div>
   </div>
 </div>
@@ -1836,31 +1843,39 @@ function abfahrerIstFrei(abfahrerId) {
 
 // LOGIN
 function renderLogin() {
-  // Show demo hint buttons (fill fields on click)
   const ul = document.getElementById('user-list');
   if(!ul) return;
   ul.innerHTML = '';
   state.users.forEach(u => {
     const btn = document.createElement('button');
-    btn.style.cssText = 'background:#0f140f;border:1px solid #2a3a2a;border-left:2px solid #2a3a2a;border-radius:2px;padding:7px 12px;cursor:pointer;text-align:left;color:#7a9870;font-size:11px;font-family:"IBM Plex Mono",monospace;display:flex;align-items:center;gap:10px;transition:all .12s;width:100%';
-    btn.onmouseenter = () => { btn.style.borderLeftColor = '#c8962e'; btn.style.color = '#d8e8d0'; };
-    btn.onmouseleave = () => { btn.style.borderLeftColor = '#2a3a2a'; btn.style.color = '#7a9870'; };
-    const dc = u.role==='drescher'?'#c8962e':u.role==='abfahrer'?'#4a8ab0':'#3d8b3d';
-    btn.innerHTML = `<span style="width:5px;height:5px;border-radius:50%;background:${dc};flex-shrink:0;display:inline-block"></span><span style="flex:1;color:#d8e8d0;font-weight:500">${u.name}</span><span style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#4a6040">${u.role}</span>`;
-    // Demo-Passwörter für Login-Buttons (nur lokale Hilfe, nicht sicherheitsrelevant)
-    const demoPW = {
-      'Hans Müller':'drescher1','Karl Bauer':'drescher2',
-      'Peter Schmidt':'abfahrer1','Thomas Wagner':'abfahrer2','Fritz Lange':'abfahrer3',
-      'Betriebsleiter':'admin123','Silomeister':'silo123'
-    };
-    btn.dataset.plainpw = u._plainpw || demoPW[u.name] || '';
-    btn.onclick = () => {
-      document.getElementById('login-name').value = u.name;
-      document.getElementById('login-pw').value = btn.dataset.plainpw;
-      document.getElementById('login-error').style.display = 'none';
-    };
+    btn.className = 'user-btn';
+    const dc = u.role==='drescher'?'role-drescher':u.role==='abfahrer'?'role-abfahrer':'role-admin';
+    const roleLabel = u.role==='drescher'?'Drescherfahrer':u.role==='abfahrer'?'Abfahrer / Waage':u.role==='silomeister'?'Silomeister':'Admin / Übersicht';
+    btn.innerHTML = `<span class="role-dot ${dc}"></span><span class="uname" style="flex:1">${u.name}</span><span class="urole">${roleLabel}</span>`;
+    btn.onclick = () => selectLoginUser(u);
     ul.appendChild(btn);
   });
+}
+
+function selectLoginUser(u) {
+  const dc = u.role==='drescher'?'role-drescher':u.role==='abfahrer'?'role-abfahrer':'role-admin';
+  const roleLabel = u.role==='drescher'?'Drescherfahrer':u.role==='abfahrer'?'Abfahrer / Waage':u.role==='silomeister'?'Silomeister':'Admin / Übersicht';
+  document.getElementById('login-selected-name').textContent = u.name;
+  document.getElementById('login-selected-role').textContent = roleLabel;
+  document.getElementById('login-selected-dot').className = 'role-dot ' + dc;
+  document.getElementById('login-step-user').style.display = 'none';
+  document.getElementById('login-step-pw').style.display = '';
+  document.getElementById('login-pw').value = '';
+  document.getElementById('login-error').style.display = 'none';
+  window._loginSelectedUser = u;
+  setTimeout(() => document.getElementById('login-pw').focus(), 80);
+}
+
+function loginBack() {
+  window._loginSelectedUser = null;
+  document.getElementById('login-step-pw').style.display = 'none';
+  document.getElementById('login-step-user').style.display = '';
+  document.getElementById('login-error').style.display = 'none';
 }
 
 function togglePw() {
@@ -1871,10 +1886,12 @@ function togglePw() {
 const _loginAttempts = {};
 
 async function doLogin() {
-  const name = document.getElementById('login-name').value.trim();
+  const selectedUser = window._loginSelectedUser;
   const pw = document.getElementById('login-pw').value;
   const errEl = document.getElementById('login-error');
-  if(!name || !pw) { errEl.style.display = 'block'; return; }
+  if(!selectedUser) return;
+  if(!pw) { errEl.textContent = 'Bitte Passwort eingeben.'; errEl.style.display = 'block'; return; }
+  const name = selectedUser.name;
   // Rate limiting
   const now = Date.now();
   const attempt = _loginAttempts[name.toLowerCase()] || {count:0, until:0};
