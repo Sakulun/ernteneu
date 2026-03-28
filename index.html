@@ -30,20 +30,20 @@
   --primary-fixed:#bff0a2;--secondary-container:#fdca56;--on-primary:#ffffff;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--mono);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+body{font-family:var(--mono);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
 /* LOGIN */
-#login-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:radial-gradient(ellipse at 50% 0%,#1e3a1e 0%,var(--bg) 70%)}
+#login-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:radial-gradient(ellipse at 50% 0%,#d0e8c0 0%,var(--bg) 70%)}
 .login-logo{font-family:'Mistral',cursive;font-size:72px;font-weight:400;color:var(--gold);letter-spacing:0;margin-bottom:2px;line-height:1.1}
 .login-app-name{font-family:var(--serif);font-size:13px;font-weight:600;color:var(--text3);letter-spacing:3px;text-transform:uppercase;margin-bottom:6px}
 .login-sub{color:var(--text3);font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:40px}
 .login-card{background:#ffffff;border:1px solid #d8dcd8;border-radius:14px;padding:32px;width:100%;max-width:360px;box-shadow:0 4px 20px rgba(0,0,0,0.1)}
-.login-card h2{font-family:var(--serif);font-weight:300;font-size:20px;color:#3a3a3a;margin-bottom:24px}
+.login-card h2{font-family:var(--serif);font-weight:300;font-size:20px;color:var(--text);margin-bottom:24px}
 .user-grid{display:grid;gap:8px}
 .user-btn{background:#ffffff;border:1px solid #d8dcd8;border-radius:var(--radius);padding:14px 16px;cursor:pointer;text-align:left;transition:all .15s;color:var(--text);display:flex;align-items:center;gap:12px}
 .user-btn:hover{border-color:var(--gold);background:#e8ece8}
 .role-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .role-drescher{background:var(--amber)}.role-abfahrer{background:var(--blue)}.role-admin{background:var(--gold)}
-.uname{font-size:13px;font-weight:500}.urole{font-size:11px;color:#5a7a5a}
+.uname{font-size:14px;font-weight:500}.urole{font-size:13px;color:var(--text2)}
 /* APP */
 #app{display:none;min-height:100vh;flex-direction:column}
 #app.active{display:flex}
@@ -51,98 +51,98 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);min-height:1
 .topbar-left{display:flex;align-items:flex-end;gap:10px}
 .topbar-logo{font-family:'Mistral',cursive;font-size:26px;font-weight:400;color:var(--gold);line-height:1}
 .topbar-appname{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-left:2px;align-self:flex-end;padding-bottom:2px}
-.topbar-user{font-size:11px;color:rgba(255,255,255,0.8);display:flex;align-items:center;gap:6px}
+.topbar-user{font-size:13px;color:var(--text2);display:flex;align-items:center;gap:6px}
 .topbar-user .dot{width:6px;height:6px;border-radius:50%}
-.logout-btn{background:none;border:1px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.8);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:'Helvetica Neue',Arial,sans-serif;transition:all .15s}
+.logout-btn{background:none;border:1px solid var(--border);color:var(--text2);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-family:'Helvetica Neue',Arial,sans-serif;transition:all .15s}
 .logout-btn:hover{border-color:var(--red);color:var(--red)}
 .content{flex:1;padding:16px;width:100%}
 /* TABS */
 .tabs{display:flex;gap:0;background:#e8ece8;border:1px solid #d0d8d0;border-radius:10px;padding:3px;margin-bottom:16px}
-.tab{flex:1;padding:8px 4px;background:none;border:none;color:#6a7a6a;cursor:pointer;border-radius:7px;font-size:12px;font-family:'Helvetica Neue',Arial,sans-serif;transition:all .15s}
+.tab{flex:1;padding:8px 4px;background:none;border:none;color:var(--text2);cursor:pointer;border-radius:7px;font-size:14px;font-family:'Helvetica Neue',Arial,sans-serif;transition:all .15s}
 .tab.active{background:#e8ece8;color:var(--text);border:1px solid #d8dcd8}
-.tab:hover:not(.active){color:#3a3a3a}
+.tab:hover:not(.active){color:var(--text)}
 /* CARDS */
 .card{background:#ffffff;border:1px solid #d8dcd8;border-radius:var(--radius);padding:20px;margin-bottom:12px}
 .card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
-.card-title{font-family:var(--serif);font-size:17px;font-weight:300;color:#2c2c2c}
-.card-sub{font-size:11px;color:#5a7a5a;margin-top:2px}
+.card-title{font-family:var(--serif);font-size:18px;font-weight:500;color:var(--text)}
+.card-sub{font-size:13px;color:var(--text2);margin-top:2px}
 /* FORMS */
 .form-group{margin-bottom:14px}
-label{display:block;font-size:11px;color:#5a7a5a;margin-bottom:5px;letter-spacing:1px;text-transform:uppercase}
+label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;letter-spacing:1px;text-transform:uppercase}
 select,input[type=number],input[type=text]{width:100%;background:#ffffff;border:1px solid #d8dcd8;border-radius:7px;color:var(--text);padding:10px 12px;font-size:14px;font-family:var(--mono);appearance:none;transition:border-color .15s}
 select:focus,input:focus{outline:none;border-color:var(--gold)}
 select option{background:#ffffff}
 input[type=text].search-input{background:#ffffff;border-color:var(--border);margin-bottom:10px}
 /* BUTTONS */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 20px;border-radius:8px;border:none;cursor:pointer;font-family:var(--mono);font-size:13px;font-weight:500;transition:all .15s}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 20px;border-radius:8px;border:none;cursor:pointer;font-family:var(--mono);font-size:14px;font-weight:500;transition:all .15s}
 .btn-primary{background:var(--gold);color:#1a1400}.btn-primary:hover{background:var(--gold2)}
-.btn-green{background:var(--green);color:#2c2c2c}.btn-green:hover{background:var(--green2)}
+.btn-green{background:var(--green);color:var(--text)}.btn-green:hover{background:var(--green2)}
 .btn-full{width:100%}.btn-sm{padding:6px 12px;font-size:11px}
-.btn-outline{background:none;border:1px solid #d8dcd8;color:#3a3a3a}.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+.btn-outline{background:none;border:1px solid #d8dcd8;color:var(--text)}.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
 .btn-amber{background:none;border:1px solid var(--amber);color:var(--amber)}.btn-amber:hover{background:var(--amber);color:#1a0e00}
-.btn-red{background:none;border:1px solid #d8dcd8;color:#5a7a5a}.btn-red:hover{border-color:var(--red);color:var(--red)}
+.btn-red{background:none;border:1px solid #d8dcd8;color:var(--text2)}.btn-red:hover{border-color:var(--red);color:var(--red)}
 /* BADGES */
-.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500;letter-spacing:.5px}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;letter-spacing:.5px}
 .badge-offen{background:#fff3e0;color:#c07820;border:1px solid #e0a830}
 .badge-fertig{background:#e8f5e9;color:#2d7a3a;border:1px solid #4a8a4a}
-.badge-aktiv{background:#1e2a0e;color:#2c2c2c;border:1px solid #3a4a1a}
-.badge-inaktiv{background:#e8ece8;color:#5a7a5a;border:1px solid #d8dcd8}
-.badge-abgeerntet{background:#0e1e2a;color:#5a7a5a;border:1px solid #1e3a4a}
+.badge-aktiv{background:#d4edda;color:#1a5c2a;border:1px solid #a0c8a0}
+.badge-inaktiv{background:#e8ece8;color:var(--text2);border:1px solid #d8dcd8}
+.badge-abgeerntet{background:#e0ecf4;color:#2a4a5a;border:1px solid #a0c0d0}
 /* SCHLAG LIST (Admin) */
 .schlag-item{border:1px solid #d8dcd8;border-radius:var(--radius);padding:12px 14px;margin-bottom:6px;background:#ffffff;display:flex;align-items:center;gap:10px}
 .schlag-item.aktiv{border-left:3px solid var(--gold2)}
 .schlag-item.abgeerntet{opacity:.5}
 .schlag-info{flex:1;min-width:0}
-.schlag-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.schlag-detail{font-size:11px;color:#5a7a5a;margin-top:2px}
+.schlag-name{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.schlag-detail{font-size:13px;color:var(--text2);margin-top:2px}
 .schlag-actions{display:flex;gap:5px;flex-shrink:0}
 /* FUHRE ITEMS */
 .fuhre-item{border:1px solid #d8dcd8;border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;background:#ffffff}
 .fuhre-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.fuhre-nr{font-size:11px;color:#5a7a5a}
+.fuhre-nr{font-size:13px;color:var(--text2)}
 .fuhre-info{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
-.fuhre-kv{font-size:12px}.fk{color:#5a7a5a}.fv{color:var(--text)}
+.fuhre-kv{font-size:14px}.fk{color:var(--text2)}.fv{color:var(--text)}
 /* STATS */
 .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
 .stat-box{background:#ffffff;border:1px solid #d8dcd8;border-radius:var(--radius);padding:14px}
-.stat-val{font-family:var(--serif);font-size:28px;font-weight:600;color:#2c2c2c;line-height:1}
-.stat-label{font-size:10px;color:#5a7a5a;margin-top:4px;text-transform:uppercase;letter-spacing:1px}
+.stat-val{font-family:var(--serif);font-size:30px;font-weight:600;color:var(--text);line-height:1}
+.stat-label{font-size:12px;color:var(--text2);margin-top:4px;text-transform:uppercase;letter-spacing:1px}
 .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.bar-label{font-size:11px;color:#3a3a3a;width:130px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-label{font-size:13px;color:var(--text);width:130px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar-track{flex:1;background:#e8ece8;border-radius:3px;height:8px;overflow:hidden}
 .bar-fill{height:100%;border-radius:3px;background:var(--gold);transition:width .5s}
-.bar-val{font-size:11px;color:#5a7a5a;width:55px;text-align:right;flex-shrink:0}
+.bar-val{font-size:13px;color:var(--text2);width:55px;text-align:right;flex-shrink:0}
 /* MISC */
 .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.5s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .alert{border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:12px;border:1px solid}
-.alert-warn{background:#2a1e08;border-color:#5a3a0a;color:var(--amber)}
-.alert-info{background:#0e1e2a;border-color:#1e3e5a;color:var(--blue)}
-.section-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#5a7a5a;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.alert-warn{background:#fff8e1;border-color:#e0c060;color:#5a4000}
+.alert-info{background:#e8f0f8;border-color:#a0c0e0;color:#2a4a6a}
+.section-label{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .section-label::after{content:'';flex:1;height:1px;background:var(--border)}
 .gewicht-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .netto-display{background:#e8f5e9;border:1px solid #a0c870;border-radius:8px;padding:14px 12px;text-align:center;margin:10px 0}
-.netto-label{font-size:10px;color:#5a7a5a;text-transform:uppercase;letter-spacing:1px}
-.netto-val{font-family:var(--serif);font-size:34px;font-weight:600;color:var(--green2);line-height:1.1}
-.netto-unit{font-size:12px;color:#5a7a5a}
-.empty-state{text-align:center;padding:40px 20px;color:#5a7a5a;font-size:13px;line-height:1.8}
+.netto-label{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+.netto-val{font-family:var(--serif);font-size:36px;font-weight:700;color:var(--text);line-height:1.1}
+.netto-unit{font-size:14px;color:var(--text2)}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text2);font-size:14px;line-height:1.8}
 .export-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#ffffff;border:1px solid #d8dcd8;border-radius:8px;margin-bottom:14px}
-.export-bar span{flex:1;font-size:12px;color:#5a7a5a}
+.export-bar span{flex:1;font-size:14px;color:var(--text2)}
 .filter-bar{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
-.filter-btn{padding:5px 10px;border-radius:6px;border:1px solid #d8dcd8;background:none;color:#5a7a5a;font-size:11px;font-family:var(--mono);cursor:pointer;transition:all .15s}
+.filter-btn{padding:6px 12px;border-radius:6px;border:1px solid #d8dcd8;background:none;color:var(--text2);font-size:13px;font-family:var(--mono);cursor:pointer;transition:all .15s}
 .filter-btn.active{background:#e8ece8;color:var(--text);border-color:var(--gold)}
 .abfahrer-disabled{opacity:.4;cursor:not-allowed !important}
-select option:disabled{color:#5a7a5a}
-.fruchtart-fixed{background:#e8ece8;border:1px solid #d8dcd8;border-radius:7px;padding:10px 12px;font-size:13px;color:#3a3a3a;font-family:var(--mono)}
+select option:disabled{color:var(--text2)}
+.fruchtart-fixed{background:#e8ece8;border:1px solid #d8dcd8;border-radius:7px;padding:10px 12px;font-size:13px;color:var(--text);font-family:var(--mono)}
 @media(max-width:400px){.gewicht-grid{grid-template-columns:1fr}}
 
-  .schlag-popup .leaflet-popup-content-wrapper { background:#ffffff; color:#2c2c2c; border:1px solid #d0d8d0; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+  .schlag-popup .leaflet-popup-content-wrapper { background:#ffffff; color:var(--text); border:1px solid #d0d8d0; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.15); }
   .schlag-popup .leaflet-popup-tip { background:#ffffff; }
-  .driver-popup .leaflet-popup-content-wrapper { background:#ffffff; color:#2c2c2c; border:1px solid #d0d8d0; border-radius:10px; }
+  .driver-popup .leaflet-popup-content-wrapper { background:#ffffff; color:var(--text); border:1px solid #d0d8d0; border-radius:10px; }
   .driver-popup .leaflet-popup-tip { background:#ffffff; }
-  .leaflet-control-layers { background:#ffffff !important; color:#2c2c2c !important; border:1px solid #d0d8d0 !important; border-radius:8px !important; }
+  .leaflet-control-layers { background:#ffffff !important; color:var(--text) !important; border:1px solid #d0d8d0 !important; border-radius:8px !important; }
   .leaflet-control-layers label { color:#e5e7eb !important; font-size:12px; }
-  .leaflet-bar a { background:#ffffff !important; color:#2c2c2c !important; border-color:#d0d8d0 !important; }
+  .leaflet-bar a { background:#ffffff !important; color:var(--text) !important; border-color:#d0d8d0 !important; }
   .leaflet-bar a:hover { background:#e8f0e8 !important; }
 
 /* ── ADMIN SIDEBAR LAYOUT ── */
@@ -531,8 +531,8 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 
 /* Schlag items */
 .schlag-item { background:#ffffff; border:1px solid #d0dac8; border-radius:8px; padding:10px 12px; margin-bottom:6px; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
-.schlag-name { color:#2c2c2c; font-weight:700; font-size:13px; }
-.schlag-detail { color:#5a7a5a; font-size:11px; margin-top:2px; }
+.schlag-name { color:var(--text); font-weight:700; font-size:13px; }
+.schlag-detail { color:var(--text2); font-size:11px; margin-top:2px; }
 
 /* Section labels */
 .section-label { color:#3a5a3a; font-weight:700; font-size:11px; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
@@ -545,7 +545,7 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 /* Tabs */
 .tabs { background:#e8eed8; border:1px solid #c8d8b8; border-radius:10px; padding:3px; margin-bottom:14px; }
 .tab  { color:#4a6a3a; font-size:12px; font-weight:600; }
-.tab.active { background:#fff; color:#2c2c2c; font-weight:700; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+.tab.active { background:#fff; color:var(--text); font-weight:700; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
 
 /* Buttons */
 .btn { border-radius:8px; font-weight:600; font-size:13px; padding:9px 16px; border:1px solid #c0d0b8; cursor:pointer; transition:all .15s; }
@@ -578,22 +578,22 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 .form-group label { color:#3a5a3a; font-size:11px; font-weight:700; letter-spacing:0.3px; margin-bottom:5px; display:block; }
 
 /* Search */
-.search-input { background:#fff; border:1.5px solid #c0d0b8; border-radius:8px; color:#2c2c2c; padding:9px 12px; font-size:13px; width:100%; box-sizing:border-box; margin-bottom:10px; }
+.search-input { background:#fff; border:1.5px solid #c0d0b8; border-radius:8px; color:var(--text); padding:9px 12px; font-size:13px; width:100%; box-sizing:border-box; margin-bottom:10px; }
 .search-input:focus { outline:none; border-color:#3a6a2a; }
 
 /* Netto display */
 .netto-display { background:#f0f8ec; border:2px solid #a0c878; border-radius:10px; padding:14px; text-align:center; margin:10px 0; }
-.netto-label { font-size:11px; color:#5a7a5a; text-transform:uppercase; letter-spacing:1px; font-weight:700; }
-.netto-val { font-size:34px; font-weight:800; color:#2a5a1a; }
-.netto-unit { font-size:13px; color:#5a7a5a; font-weight:600; }
+.netto-label { font-size:11px; color:var(--text2); text-transform:uppercase; letter-spacing:1px; font-weight:700; }
+.netto-val { font-size:34px; font-weight:800; color:var(--text); }
+.netto-unit { font-size:13px; color:var(--text2); font-weight:600; }
 
 /* Badges */
 .badge { font-size:10px; font-weight:800; padding:3px 8px; border-radius:20px; letter-spacing:0.5px; text-transform:uppercase; }
 .badge-offen      { background:#fff3cd; color:#8a5a00; border:1px solid #d4a820; }
-.badge-aktiv      { background:#d4edda; color:#3d5a28; border:1px solid #5a9a5a; }
+.badge-aktiv      { background:#d4edda; color:var(--text); border:1px solid #5a9a5a; }
 .badge-fertig     { background:#d1ecf1; color:#0a4a6a; border:1px solid #4a9ab0; }
 .badge-inaktiv    { background:#f0f0f0; color:#5a6a5a; border:1px solid #b0c0b0; }
-.badge-abgeerntet { background:#d4edda; color:#3d5a28; border:1px solid #5a9a5a; }
+.badge-abgeerntet { background:#d4edda; color:var(--text); border:1px solid #5a9a5a; }
 .badge-verifiziert{ background:#d1ecf1; color:#0a4a6a; border:1px solid #4a9ab0; }
 
 /* Alert */
@@ -609,7 +609,7 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 .bar-label { width:120px; color:#3a5a3a; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .bar-track { flex:1; background:#e0e8d8; border-radius:4px; height:8px; overflow:hidden; }
 .bar-fill  { height:100%; background:#3a6a2a; border-radius:4px; }
-.bar-val   { width:60px; text-align:right; color:#2c2c2c; font-weight:700; }
+.bar-val   { width:60px; text-align:right; color:var(--text); font-weight:700; }
 
 /* Sidebar */
 .sidebar-section { color:rgba(255,255,255,0.6) !important; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; padding:10px 16px 4px; }
@@ -1180,9 +1180,9 @@ select option { background: var(--card) !important; color: var(--text) !importan
 [style*="background:#141a14"],[style*="background:#1e2a1e"] {
   background: var(--bg2) !important;
 }
-[style*="color:#2c2c2c"],[style*="color: #2c2c2c"] { color: var(--text) !important; }
-[style*="color:#3a3a3a"]  { color: var(--text) !important; }
-[style*="color:#5a7a5a"]  { color: var(--text2) !important; }
+[style*="color:var(--text)"],[style*="color: #2c2c2c"] { color: var(--text) !important; }
+[style*="color:var(--text)"]  { color: var(--text) !important; }
+[style*="color:var(--text2)"]  { color: var(--text2) !important; }
 [style*="color:#8a8a8a"]  { color: var(--text3) !important; }
 [style*="color:#d8e8d0"],[style*="color: #d8e8d0"] { color: var(--text) !important; }
 [style*="color:#7a9870"]  { color: var(--text2) !important; }
@@ -1233,7 +1233,7 @@ select option { background: var(--card) !important; color: var(--text) !importan
       <span class="topbar-appname">Ernte 2026</span>
       <span class="topbar-user"><span class="dot" id="topbar-dot"></span><span id="topbar-name"></span><span id="topbar-sync" style="width:7px;height:7px;border-radius:50%;background:#6b8f4e;display:none;margin-left:8px;flex-shrink:0;vertical-align:middle"></span></span>
     </div>
-    <div style="display:flex;gap:8px;align-items:center"><button id="topbar-menu-btn" onclick="toggleSidebar()">☰</button><button id="topbar-nachricht-btn" onclick="showNachrichtenDialog()" style="display:none;background:none;border:1px solid #d8dcd8;color:#5a7a5a;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--mono)">📢</button><button id="topbar-hilfe-btn" onclick="showOnboarding(state.currentUser?.role)" style="display:none;background:none;border:1px solid #d8dcd8;color:#5a7a5a;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--mono)">? Hilfe</button><button class="logout-btn" onclick="logout()">Abmelden</button></div>
+    <div style="display:flex;gap:8px;align-items:center"><button id="topbar-menu-btn" onclick="toggleSidebar()">☰</button><button id="topbar-nachricht-btn" onclick="showNachrichtenDialog()" style="display:none;background:none;border:1px solid #d8dcd8;color:var(--text2);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--mono)">📢</button><button id="topbar-hilfe-btn" onclick="showOnboarding(state.currentUser?.role)" style="display:none;background:none;border:1px solid #d8dcd8;color:var(--text2);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--mono)">? Hilfe</button><button class="logout-btn" onclick="logout()">Abmelden</button></div>
   </div>
   <div class="content" id="main-content"></div>
 </div>
@@ -2170,8 +2170,8 @@ function renderAbfahrer() {
 
 function renderAbfahrerOffen() {
   const fuhren=state.fuhren.filter(f=>f.abfahrerId===state.currentUser.id&&f.status==='offen').sort((a,b)=>new Date(b.zeit)-new Date(a.zeit));
-  document.getElementById('atab').innerHTML = fuhren.length ? fuhren.map(f=>`
-    <div class="card">
+  document.getElementById('atab').innerHTML = fuhren.length ? fuhren.map(f=>{ const _fr = getFruchtFarbe(f.fruchtart); return `
+    <div class="card" style="border-left:4px solid ${_fr.dot}">
       <div class="card-header" style="${isBioFuhre(f)?'background:rgba(22,101,52,0.15);border-bottom:1px solid #4a8a4a':''}">
         <div>
           <div class="card-title">${getFeld(f.feldId).name}${isBioFuhre(f)?bioBadge(true):''}</div>
@@ -2179,7 +2179,7 @@ function renderAbfahrerOffen() {
         </div>
         <span class="badge badge-offen">OFFEN</span>
       </div>
-      ${isBioFuhre(f) ? '<div style="background:#e8f5e9;color:#3d5a28;font-size:13px;font-weight:700;padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #4a8a4a"><span style="font-size:18px">🌿</span><div><div>BIO-WARE – zertifizierte Ernte</div><div style="font-size:11px;font-weight:400;opacity:0.8">Betrieb: '+getFeld(f.feldId).betrieb+'</div></div></div>' : ''}
+      ${isBioFuhre(f) ? '<div style="background:#e8f5e9;color:var(--text);font-size:13px;font-weight:700;padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #4a8a4a"><span style="font-size:18px">🌿</span><div><div>BIO-WARE – zertifizierte Ernte</div><div style="font-size:11px;font-weight:400;opacity:0.8">Betrieb: '+getFeld(f.feldId).betrieb+'</div></div></div>' : ''}
       ${f.sorte ? '<div style="background:#e3f2fd;color:#1a4a8a;font-size:13px;font-weight:700;padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1e88e5"><span style="font-size:18px">🌱</span><div><div>Z-SAATGUT · Vermehrung: '+f.sorte+'</div><div style="font-size:11px;font-weight:400;opacity:0.8">Bitte separat abladen – eigenes Silo!</div></div></div>' : ''}
       <div class="section-label">Gewichte</div>
       <div class="gewicht-grid">
@@ -2202,14 +2202,14 @@ function renderAbfahrerOffen() {
         <div class="netto-val" id="netto-${f.id}" style="font-size:28px">—</div>
         <div class="netto-unit">kg</div>
       </div>
-      <div class="section-label">Qualität <span style="font-size:10px;color:#5a7a5a;font-weight:400">– alle optional, fehlende Angaben werden abgefragt</span></div>
+      <div class="section-label">Qualität <span style="font-size:10px;color:var(--text2);font-weight:400">– alle optional, fehlende Angaben werden abgefragt</span></div>
       <div class="gewicht-grid" id="qual-grid-${f.id}">
         ${(()=>{const qf=getQualitaetsfelder(f.fruchtart);return Object.entries(qf).map(([key,q])=>
           `<div class="form-group"><label>${q.label}</label><input type="number" id="qual-${key}-${f.id}" placeholder="${q.ph}" step="${q.step}"></div>`
         ).join('');})()}
       </div>
       <button class="btn btn-green btn-full" onclick="fuhreSpeichern(${f.id})">&#10003; Fuhre abschließen</button>
-    </div>`).join('') :
+    </div>`; }).join('') :
     `<div class="empty-state"><span class="live-dot"></span><br><br>Warte auf Zuweisung<br>vom Drescherfahrer&hellip;</div>`;
 }
 
@@ -2292,9 +2292,17 @@ async function fuhreSpeichern(fId) {
 function renderAbfahrerFertig() {
   const nrNum2 = f => parseInt((f.nr||'').replace('F-',''))||0;
   const fuhren=state.fuhren.filter(f=>f.abfahrerId===state.currentUser.id&&f.status==='fertig').sort((a,b)=>nrNum2(b)-nrNum2(a));
-  document.getElementById('atab').innerHTML=fuhren.length?fuhren.map(f=>{
+  const totalKg = fuhren.reduce((s,f)=>s+(netto(f)||0),0);
+  const totalT = (totalKg/1000).toFixed(1);
+  const summaryHtml = `<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;text-align:center">
+    <div style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px">Deine Gesamtleistung</div>
+    <div style="font-family:var(--serif);font-size:40px;font-weight:700;color:var(--text)">${totalT} t</div>
+    <div style="font-size:14px;color:var(--text2);margin-top:4px">${fuhren.length} Fuhren abgeschlossen</div>
+  </div>`;
+  document.getElementById('atab').innerHTML=fuhren.length?(summaryHtml+fuhren.map(f=>{
     const n=netto(f);
-    return `<div class="fuhre-item">
+    const fr=getFruchtFarbe(f.fruchtart);
+    return `<div class="fuhre-item" style="border-left:4px solid ${fr.dot}">
       <div class="fuhre-top"><span class="fuhre-nr">${f.nr} · ${fmtTime(f.zeit)}</span><span class="badge badge-fertig">FERTIG</span></div>
       <div class="fuhre-info">
         <div class="fuhre-kv"><span class="fk">Schlag </span><span class="fv">${getFeld(f.feldId).name||'–'}</span></div>
@@ -2302,7 +2310,7 @@ function renderAbfahrerFertig() {
         <div class="fuhre-kv"><span class="fk">Feuchte </span><span class="fv">${f.feuchte?f.feuchte+'%':'–'}</span></div>
         ${f.protein?`<div class="fuhre-kv"><span class="fk">Protein </span><span class="fv">${f.protein}%</span></div>`:''}
       </div></div>`;
-  }).join(''):'<div class="empty-state">Noch keine abgeschlossenen Fuhren.</div>';
+  }).join('')):'<div class="empty-state">Noch keine abgeschlossenen Fuhren.</div>';
 }
 
 // ─── ADMIN ───
@@ -2326,7 +2334,7 @@ function renderAdmin() {
         <nav id="admin-sidebar" class="${sidebarCollapsed?'collapsed':''}">
           <button class="sidebar-toggle" onclick="toggleSidebar()">
             <span style="font-size:18px">${sidebarCollapsed?'☰':'✕'}</span>
-            <span class="sidebar-label" style="font-family:var(--serif);color:#2c2c2c">Ernte 2026</span>
+            <span class="sidebar-label" style="font-family:var(--serif);color:var(--text)">Ernte 2026</span>
           </button>
           <div class="sidebar-section">Übersicht</div>
           <button class="sidebar-btn ${adminTab==='dashboard'?'active':''}" onclick="setAdminTab('dashboard')">
@@ -2482,9 +2490,9 @@ function renderAdminSchlaege() {
   if(!document.getElementById('schlag-stats')) {
     document.getElementById('admintab').innerHTML=`
       <div id="schlag-stats" class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
-        <div class="stat-box"><div class="stat-val" style="font-size:22px;color:#2c2c2c" id="s-aktiv"></div><div class="stat-label">Aktiv</div></div>
+        <div class="stat-box"><div class="stat-val" style="font-size:22px;color:var(--text)" id="s-aktiv"></div><div class="stat-label">Aktiv</div></div>
         <div class="stat-box"><div class="stat-val" style="font-size:22px;color:var(--green)" id="s-abg"></div><div class="stat-label">Abgeerntet</div></div>
-        <div class="stat-box"><div class="stat-val" style="font-size:22px;color:#5a7a5a" id="s-inaktiv"></div><div class="stat-label">Inaktiv</div></div>
+        <div class="stat-box"><div class="stat-val" style="font-size:22px;color:var(--text2)" id="s-inaktiv"></div><div class="stat-label">Inaktiv</div></div>
       </div>
       <input type="text" id="schlag-search-input" class="search-input" placeholder="Suche nach Schlag oder Fruchtart…"
         oninput="schlagSearchInput(this.value)">
@@ -2602,7 +2610,7 @@ function renderAdminDash() {
           <span style="width:10px;height:10px;border-radius:50%;background:${farbe.dot};flex-shrink:0;display:inline-block"></span>
           <span style="font-size:13px;font-weight:600;color:var(--text)">${fa}</span>
         </div>
-        <span style="font-size:12px;color:#5a7a5a">${k.ha_gesamt.toFixed(1)} ha gesamt</span>
+        <span style="font-size:12px;color:var(--text2)">${k.ha_gesamt.toFixed(1)} ha gesamt</span>
       </div>
       <div style="background:#e8ece8;border-radius:4px;height:10px;overflow:hidden;display:flex;margin-bottom:5px">
         <div style="width:${pct_abg.toFixed(1)}%;background:var(--green);height:100%;transition:width .3s"></div>
@@ -2610,9 +2618,9 @@ function renderAdminDash() {
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;font-size:11px">
         <div><span style="color:var(--green)">✓ ${k.ha_abg.toFixed(1)} ha</span></div>
-        <div><span style="color:#2c2c2c">${k.ha_aktiv>0?'⚙ '+k.ha_aktiv.toFixed(1)+' ha':'–'}</span></div>
-        <div><span style="color:#5a7a5a">⬜ ${ha_offen.toFixed(1)} ha</span></div>
-        <div style="text-align:right"><span style="color:#3a3a3a">${tStr}</span>${k.ha_abg>0?` <span style="color:#5a7a5a">· ${dtHa}</span>`:''}</div>
+        <div><span style="color:var(--text)">${k.ha_aktiv>0?'⚙ '+k.ha_aktiv.toFixed(1)+' ha':'–'}</span></div>
+        <div><span style="color:var(--text2)">⬜ ${ha_offen.toFixed(1)} ha</span></div>
+        <div style="text-align:right"><span style="color:var(--text)">${tStr}</span>${k.ha_abg>0?` <span style="color:var(--text2)">· ${dtHa}</span>`:''}</div>
       </div>
     </div>`;
   }).join('');
@@ -2633,25 +2641,25 @@ function renderAdminDash() {
         <button class="btn btn-sm btn-outline" onclick="adminTab='fuhren';renderAdmin();toggleFuhreEdit(${f.id})">✏ Bearbeiten</button>
         <button class="btn btn-sm" style="background:var(--blue);color:#fff;border:none" onclick="adminTab='fuhren';renderAdmin();adminAbschliessen(${f.id})">⚖ Abschließen</button>
       </div>
-    </div>`).join('') : '<div style="color:#5a7a5a;font-size:12px;padding:8px 0">Keine offenen Fuhren</div>';
+    </div>`).join('') : '<div style="color:var(--text2);font-size:12px;padding:8px 0">Keine offenen Fuhren</div>';
 
   document.getElementById('admintab').innerHTML=`
     <div class="stats-grid" style="margin-bottom:16px">
       <div class="stat-box"><div class="stat-val">${(totalNet/1000).toFixed(1)}</div><div class="stat-label">Tonnen gesamt</div></div>
       <div class="stat-box"><div class="stat-val" style="color:var(--green)">${abgHa.toFixed(0)}</div><div class="stat-label">ha abgeerntet</div></div>
-      <div class="stat-box"><div class="stat-val" style="color:#5a7a5a">${(gesamtHa-abgHa).toFixed(0)}</div><div class="stat-label">ha noch offen</div></div>
+      <div class="stat-box"><div class="stat-val" style="color:var(--text2)">${(gesamtHa-abgHa).toFixed(0)}</div><div class="stat-label">ha noch offen</div></div>
       <div class="stat-box"><div class="stat-val">${fertig.length}</div><div class="stat-label">Fuhren fertig</div></div>
     </div>
     <div class="card">
       <div class="card-header">
         <div class="card-title">Erntefortschritt je Kultur</div>
       </div>
-      <div style="font-size:11px;color:#5a7a5a;display:flex;gap:14px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="font-size:11px;color:var(--text2);display:flex;gap:14px;margin-bottom:12px;flex-wrap:wrap">
         <span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:4px"></span>Abgeerntet</span>
         <span><span style="display:inline-block;width:10px;height:10px;background:var(--gold);border-radius:2px;margin-right:4px"></span>Aktiv</span>
         <span><span style="display:inline-block;width:10px;height:10px;background:#e8ece8;border:1px solid #d8dcd8;border-radius:2px;margin-right:4px"></span>Offen</span>
       </div>
-      ${kulturRows || '<div style="color:#5a7a5a;font-size:12px">Noch keine Daten</div>'}
+      ${kulturRows || '<div style="color:var(--text2);font-size:12px">Noch keine Daten</div>'}
     </div>
     <div class="card"><div class="card-header"><div class="card-title">Live-Status</div><button class="btn btn-sm btn-outline" onclick="renderAdmin()">&#8635; Refresh</button></div>${liveHtml}</div>`;
 }
@@ -2684,16 +2692,16 @@ function renderAdminFuhren() {
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px">
-        <div style="font-size:10px"><span style="color:#5a7a5a">Feuchte </span><span>${f.feuchte??'–'}%</span></div>
-        <div style="font-size:10px"><span style="color:#5a7a5a">Protein </span><span>${f.protein??'–'}%</span></div>
-        <div style="font-size:10px"><span style="color:#5a7a5a">Fallzahl </span><span>${f.fallzahl??'–'}</span></div>
-        <div style="font-size:10px"><span style="color:#5a7a5a">HL </span><span>${f.hlGewicht??'–'}</span></div>
+        <div style="font-size:10px"><span style="color:var(--text2)">Feuchte </span><span>${f.feuchte??'–'}%</span></div>
+        <div style="font-size:10px"><span style="color:var(--text2)">Protein </span><span>${f.protein??'–'}%</span></div>
+        <div style="font-size:10px"><span style="color:var(--text2)">Fallzahl </span><span>${f.fallzahl??'–'}</span></div>
+        <div style="font-size:10px"><span style="color:var(--text2)">HL </span><span>${f.hlGewicht??'–'}</span></div>
       </div>
       ${f.siloId?`<div style="margin-top:6px;font-size:11px;color:var(--blue)">🏭 Silo ${f.siloId}</div>`:''}
       ${showEdit ? `<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
         ${!isVerified ? `
           <button class="btn btn-sm btn-outline" onclick="toggleFuhreEdit(${f.id})">✏ Bearbeiten</button>
-          <button class="btn btn-sm" style="background:var(--green);color:#2c2c2c;border:none" onclick="verifiziereFuhre(${f.id})">✓ Bestätigen</button>
+          <button class="btn btn-sm" style="background:var(--green);color:var(--text);border:none" onclick="verifiziereFuhre(${f.id})">✓ Bestätigen</button>
         ` : `
           <button class="btn btn-sm btn-outline" onclick="toggleFuhreEdit(${f.id})">✏ Bearbeiten</button>
           <button class="btn btn-sm btn-amber" onclick="verifiziereFuhre(${f.id})">↺ Öffnen</button>
@@ -2705,15 +2713,16 @@ function renderAdminFuhren() {
 
   const offenRow = (f) => {
     const feld = getFeld(f.feldId);
-    return `<div class="card" style="margin-bottom:10px;border-color:var(--amber)">
+    const _fr = getFruchtFarbe(f.fruchtart);
+    return `<div class="card" style="margin-bottom:10px;border-color:var(--amber);border-left:4px solid ${_fr.dot}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="min-width:0">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
             <span class="badge badge-offen">OFFEN</span>
             <span style="font-size:12px;font-weight:600;color:var(--text)">${f.nr} · ${fmtDate(f.zeit)} ${fmtTime(f.zeit)}</span>
           </div>
-          <div style="font-size:11px;color:#5a7a5a;margin-top:2px">${feld.name||'?'} · ${f.fruchtart}</div>
-          <div style="font-size:11px;color:#5a7a5a">${getUser(f.drescherId).name} → ${getUser(f.abfahrerId).name}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">${feld.name||'?'} · ${f.fruchtart}</div>
+          <div style="font-size:11px;color:var(--text2)">${getUser(f.drescherId).name} → ${getUser(f.abfahrerId).name}</div>
         </div>
       </div>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
@@ -2728,15 +2737,15 @@ function renderAdminFuhren() {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1;min-width:240px">
         <div class="stat-box"><div class="stat-val" style="font-size:22px;color:#c07820">${offen.length}</div><div class="stat-label">offen</div></div>
-        <div class="stat-box"><div class="stat-val" style="font-size:18px;color:#2c2c2c">${pending.length}</div><div class="stat-label">zu prüfen</div></div>
-        <div class="stat-box"><div class="stat-val" style="font-size:22px;color:#3d5a28">${verified.length}</div><div class="stat-label">bestätigt</div></div>
+        <div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--text)">${pending.length}</div><div class="stat-label">zu prüfen</div></div>
+        <div class="stat-box"><div class="stat-val" style="font-size:22px;color:var(--text)">${verified.length}</div><div class="stat-label">bestätigt</div></div>
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0">
         <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ CSV</button>
         <button class="btn btn-outline btn-sm" onclick="exportTagesbericht()">📄 Tagesbericht</button>
       </div>
     </div>
-    ${pending.length ? `<div class="section-label" style="color:#2c2c2c">⚠ Zu bestätigen (${pending.length})</div>${pending.map(f=>fuhreRow(f,true)).join('')}` : ''}
+    ${pending.length ? `<div class="section-label" style="color:var(--text)">⚠ Zu bestätigen (${pending.length})</div>${pending.map(f=>fuhreRow(f,true)).join('')}` : ''}
     ${verified.length ? `<div class="section-label" style="margin-top:8px">✓ Bestätigt (${verified.length})</div>${verified.map(f=>fuhreRow(f,true)).join('')}` : ''}
     ${offen.length ? `<div class="section-label" style="margin-top:8px;color:var(--amber)">⚠ Offene Fuhren (${offen.length})</div>${offen.map(offenRow).join('')}` : ''}`;
 }
@@ -2970,7 +2979,7 @@ function renderAdminFortschritt() {
         }).join('')}
       </div>` : '';
 
-    const chevron = schlagRows.length ? `<span style="font-size:11px;color:#5a7a5a;margin-left:6px">${isOpen?'▲':'▼'}</span>` : '';
+    const chevron = schlagRows.length ? `<span style="font-size:11px;color:var(--text2);margin-left:6px">${isOpen?'▲':'▼'}</span>` : '';
     const clickable = schlagRows.length ? `style="cursor:pointer" onclick="toggleFortschritt('${fa}')"` : '';
 
     return `<div style="border:1px solid #d8dcd8;border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;background:#ffffff">
@@ -2980,11 +2989,11 @@ function renderAdminFortschritt() {
             <div style="font-size:13px;font-weight:500;color:var(--text);display:flex;align-items:center">
               ${fa}${chevron}
             </div>
-            <div style="font-size:11px;color:#5a7a5a;margin-top:2px">${k.ha_gesamt.toFixed(1)} ha gesamt · ${k.fuhren} Fuhren</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px">${k.ha_gesamt.toFixed(1)} ha gesamt · ${k.fuhren} Fuhren</div>
           </div>
           <div style="text-align:right;flex-shrink:0;margin-left:12px">
             <div style="font-family:var(--serif);font-size:18px;font-weight:600;color:${statusColor}">${pct.toFixed(0)}%</div>
-            <div style="font-size:10px;color:#5a7a5a">abgeerntet</div>
+            <div style="font-size:10px;color:var(--text2)">abgeerntet</div>
           </div>
         </div>
         <div style="background:#e8ece8;border-radius:4px;height:10px;overflow:hidden;margin-bottom:10px;display:flex">
@@ -2992,14 +3001,14 @@ function renderAdminFortschritt() {
           <div style="width:${pct_aktiv.toFixed(1)}%;background:var(--gold);height:100%"></div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:5px 12px">
-          <div style="font-size:11px"><span style="color:#5a7a5a">Abgeerntet </span><span style="color:var(--green)">${k.ha_abgeerntet.toFixed(1)} ha</span></div>
-          <div style="font-size:11px"><span style="color:#5a7a5a">In Arbeit </span><span style="color:#2c2c2c">${k.ha_aktiv.toFixed(1)} ha</span></div>
-          <div style="font-size:11px"><span style="color:#5a7a5a">Noch offen </span><span style="color:#3a3a3a">${ha_offen.toFixed(1)} ha</span></div>
-          <div style="font-size:11px"><span style="color:#5a7a5a">Geerntet </span><span style="color:var(--text)">${(k.kg_geerntet/1000).toFixed(1)} t</span></div>
+          <div style="font-size:11px"><span style="color:var(--text2)">Abgeerntet </span><span style="color:var(--green)">${k.ha_abgeerntet.toFixed(1)} ha</span></div>
+          <div style="font-size:11px"><span style="color:var(--text2)">In Arbeit </span><span style="color:var(--text)">${k.ha_aktiv.toFixed(1)} ha</span></div>
+          <div style="font-size:11px"><span style="color:var(--text2)">Noch offen </span><span style="color:var(--text)">${ha_offen.toFixed(1)} ha</span></div>
+          <div style="font-size:11px"><span style="color:var(--text2)">Geerntet </span><span style="color:var(--text)">${(k.kg_geerntet/1000).toFixed(1)} t</span></div>
         </div>
         ${dtHa !== null ? `
         <div style="margin-top:10px;padding:8px 10px;background:#e8ece8;border-radius:7px;display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:11px;color:#5a7a5a">Ø Ertrag bisher</span>
+          <span style="font-size:11px;color:var(--text2)">Ø Ertrag bisher</span>
           <span style="font-family:var(--serif);font-size:17px;font-weight:600;color:var(--blue)">${dtHa.toFixed(1)} <span style="font-size:11px;font-family:var(--mono);font-weight:400">dt/ha</span></span>
         </div>` : ''}
       </div>
@@ -3013,22 +3022,22 @@ function renderAdminFortschritt() {
     <div class="card">
       <div class="card-header"><div class="card-title">Gesamtfortschritt</div></div>
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:13px;color:#3a3a3a">${abgerntetHa.toFixed(1)} von ${gesamtHa.toFixed(1)} ha abgeerntet</div>
-        <div style="font-family:var(--serif);font-size:26px;font-weight:600;color:#2c2c2c">${gesamtPct.toFixed(1)}%</div>
+        <div style="font-size:13px;color:var(--text)">${abgerntetHa.toFixed(1)} von ${gesamtHa.toFixed(1)} ha abgeerntet</div>
+        <div style="font-family:var(--serif);font-size:26px;font-weight:600;color:var(--text)">${gesamtPct.toFixed(1)}%</div>
       </div>
       <div style="background:#e8ece8;border-radius:6px;height:14px;overflow:hidden;margin:10px 0;display:flex">
         <div style="width:${(gesamtPct).toFixed(1)}%;background:var(--green);height:100%"></div>
         <div style="width:${gesamtHa>0?(aktivHa/gesamtHa*100).toFixed(1):0}%;background:var(--gold);height:100%"></div>
       </div>
-      <div style="display:flex;gap:14px;font-size:11px;color:#5a7a5a;margin-bottom:14px;flex-wrap:wrap">
+      <div style="display:flex;gap:14px;font-size:11px;color:var(--text2);margin-bottom:14px;flex-wrap:wrap">
         <span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:4px"></span>Abgeerntet</span>
         <span><span style="display:inline-block;width:10px;height:10px;background:var(--gold);border-radius:2px;margin-right:4px"></span>In Arbeit</span>
         <span><span style="display:inline-block;width:10px;height:10px;background:#e8ece8;border:1px solid #d8dcd8;border-radius:2px;margin-right:4px"></span>Noch offen</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
         <div class="stat-box"><div class="stat-val" style="font-size:18px">${(gesamtT/1000).toFixed(1)}</div><div class="stat-label">t gesamt</div></div>
-        <div class="stat-box"><div class="stat-val" style="font-size:22px;color:#3d5a28">${abgerntetHa.toFixed(0)}</div><div class="stat-label">ha fertig</div></div>
-        <div class="stat-box"><div class="stat-val" style="font-size:18px;color:#5a7a5a">${(gesamtHa-abgerntetHa-aktivHa).toFixed(0)}</div><div class="stat-label">ha offen</div></div>
+        <div class="stat-box"><div class="stat-val" style="font-size:22px;color:var(--text)">${abgerntetHa.toFixed(0)}</div><div class="stat-label">ha fertig</div></div>
+        <div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--text2)">${(gesamtHa-abgerntetHa-aktivHa).toFixed(0)}</div><div class="stat-label">ha offen</div></div>
         <div class="stat-box"><div class="stat-val" style="font-size:18px;color:var(--blue)">${gesamtDtHa}</div><div class="stat-label">Ø dt/ha</div></div>
       </div>
     </div>
@@ -3070,8 +3079,8 @@ function renderAdminNutzer() {
     return `<div style="border:1px solid #d8dcd8;border-radius:var(--radius);padding:12px 14px;margin-bottom:6px;background:#ffffff;display:flex;align-items:center;gap:10px">
       <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0;display:inline-block"></span>
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:500">${u.name}${isSelf?' <span style="font-size:10px;color:#5a7a5a">(du)</span>':''}</div>
-        <div style="font-size:11px;color:#5a7a5a;margin-top:2px">${roleLabel(u.role)} · PW: ••••••••</div>
+        <div style="font-size:13px;font-weight:500">${u.name}${isSelf?' <span style="font-size:10px;color:var(--text2)">(du)</span>':''}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">${roleLabel(u.role)} · PW: ••••••••</div>
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0">
         <button class="btn btn-sm btn-outline" onclick="nutzerEditStart(${u.id})">&#9998; Bearbeiten</button>
@@ -3113,7 +3122,7 @@ function buildNutzerForm(editId) {
         <input type="text" id="${formId}-name" value="${nameVal}" placeholder="Vor- und Nachname"></div>
       <div class="form-group"><label>Rolle</label>
         <select id="${formId}-role">${roles}</select></div>
-      <div class="form-group"><label>Neues Passwort <span style="color:#5a7a5a;font-weight:400">(leer = unverändert)</span></label>
+      <div class="form-group"><label>Neues Passwort <span style="color:var(--text2);font-weight:400">(leer = unverändert)</span></label>
         <input type="text" id="${formId}-pw" placeholder="Leer lassen zum Beibehalten"></div>
       <button class="btn btn-primary btn-full" onclick="nutzerSpeichern(${editId})">&#10003; Änderungen speichern</button>
     </div>`;
@@ -3211,7 +3220,7 @@ function renderAdminKarte() {
     document.getElementById('admintab').innerHTML = `
       <div style="position:relative;height:${mapH};margin:-16px">
         <div id="map-container" style="height:100%;width:100%;border-radius:0"></div>
-        <div id="map-legend" style="position:absolute;bottom:20px;left:12px;z-index:1000;background:rgba(18,22,18,0.92);border:1px solid #d8dcd8;border-radius:8px;padding:10px 12px;font-size:11px;color:#3a3a3a">
+        <div id="map-legend" style="position:absolute;bottom:20px;left:12px;z-index:1000;background:rgba(18,22,18,0.92);border:1px solid #d8dcd8;border-radius:8px;padding:10px 12px;font-size:11px;color:var(--text)">
           <div style="font-weight:600;margin-bottom:6px;color:var(--text)">Legende</div>
           <div style="display:flex;flex-direction:column;gap:4px">
             <div><span style="display:inline-block;width:12px;height:12px;background:#f59e0b;opacity:0.7;border-radius:2px;margin-right:5px"></span>Aktiv (in Ernte)</div>
@@ -3221,7 +3230,7 @@ function renderAdminKarte() {
             <div><span style="display:inline-block;width:12px;height:12px;background:#3b82f6;border-radius:50%;margin-right:5px"></span>Abfahrer</div>
           </div>
         </div>
-        <div id="map-gps-status" style="position:absolute;top:12px;right:12px;z-index:1000;background:rgba(18,22,18,0.92);border:1px solid #d8dcd8;border-radius:8px;padding:8px 12px;font-size:11px;color:#5a7a5a">GPS bereit</div>
+        <div id="map-gps-status" style="position:absolute;top:12px;right:12px;z-index:1000;background:rgba(18,22,18,0.92);border:1px solid #d8dcd8;border-radius:8px;padding:8px 12px;font-size:11px;color:var(--text2)">GPS bereit</div>
       </div>`;
     setTimeout(() => initMap(), 50);
   } else if(_mapInstance) {
@@ -3719,11 +3728,11 @@ function schlagNavItem(f) {
     +'">'
     +'<div style="min-width:0;flex:1">'
     +'<div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+f.name+'</div>'
-    +'<div style="font-size:11px;color:#5a7a5a;margin-top:2px">'+f.fruchtart+' · '+f.flaeche+' ha · <span style="color:'+statusColor+'">'+statusLabel+'</span></div>'
+    +'<div style="font-size:11px;color:var(--text2);margin-top:2px">'+f.fruchtart+' · '+f.flaeche+' ha · <span style="color:'+statusColor+'">'+statusLabel+'</span></div>'
     +'</div>'
     +(hasCoords
       ? '<button onclick="event.stopPropagation();navigiereZuSchlag('+f.id+')" style="flex-shrink:0;background:var(--blue);color:#fff;border:none;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap">🧭 Los</button>'
-      : '<span style="flex-shrink:0;font-size:11px;color:#5a7a5a">kein GPS</span>')
+      : '<span style="flex-shrink:0;font-size:11px;color:var(--text2)">kein GPS</span>')
     +'</div>';
 }
 
@@ -3733,7 +3742,7 @@ function filterSchlagNav(q) {
     .sort((a,b)=>a.name.localeCompare(b.name,'de'));
   document.getElementById('schlag-nav-liste').innerHTML = felder.length
     ? felder.map(f=>schlagNavItem(f)).join('')
-    : '<div style="text-align:center;padding:24px;color:#5a7a5a">Kein Schlag gefunden</div>';
+    : '<div style="text-align:center;padding:24px;color:var(--text2)">Kein Schlag gefunden</div>';
   // Highlight matching schlaege on map
   if(_navMap) {
     Object.entries(_navLayers).forEach(([id, layer]) => {
@@ -3781,8 +3790,8 @@ function getSiloBioStatus(siloId) {
   return 'gemischt';
 }
 function bioBadge(inline=false) {
-  if(inline) return '<span style="display:inline-block;background:#eef7e8;color:#3d5a28;font-size:9px;font-weight:800;padding:1px 5px;border-radius:4px;letter-spacing:0.5px;vertical-align:middle;margin-left:4px">BIO</span>';
-  return '<span style="display:inline-block;background:#eef7e8;color:#3d5a28;font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;letter-spacing:1px">🌿 BIO</span>';
+  if(inline) return '<span style="display:inline-block;background:#eef7e8;color:var(--text);font-size:9px;font-weight:800;padding:1px 5px;border-radius:4px;letter-spacing:0.5px;vertical-align:middle;margin-left:4px">BIO</span>';
+  return '<span style="display:inline-block;background:#eef7e8;color:var(--text);font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;letter-spacing:1px">🌿 BIO</span>';
 }
 
 // ─── FRUCHTART-FARBEN (global) ───
@@ -3848,8 +3857,8 @@ function renderSiloManagement() {
     const kulturColor = getFruchtFarbe(kultur).dot;
     const kulturSpan = kl
       ? `<span style="color:${kulturColor};font-size:${isBig?12:10}px;font-weight:600">${kl}</span>`
-      : `<span style="color:#5a7a5a;font-size:${isBig?11:9}px">leer</span>`;
-    const cntSpan = cnt ? `<br><span style="color:#5a7a5a;font-size:${isBig?10:9}px">${cnt} Fhm</span>` : '';
+      : `<span style="color:var(--text2);font-size:${isBig?11:9}px">leer</span>`;
+    const cntSpan = cnt ? `<br><span style="color:var(--text2);font-size:${isBig?10:9}px">${cnt} Fhm</span>` : '';
     // Drag handlers on outer wrapper, click handler separate via button overlay
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;position:relative"
       ondragover="event.preventDefault();document.getElementById('ssvg-${s.id}').style.filter='drop-shadow(0 0 8px var(--gold))'"
@@ -3876,22 +3885,22 @@ function renderSiloManagement() {
         ondragover="event.preventDefault();this.style.borderColor='var(--gold)'"
         ondragleave="this.style.borderColor='#4a6a2a'"
         ondrop="dropFuhreOnSilo(event,'HOF');this.style.borderColor='#4a6a2a'">
-        <div style="font-size:14px;letter-spacing:1px;text-transform:uppercase;color:#5a7a3a;margin-bottom:12px">🏗 Hofplatz · Zwischenlager · ${hofFuhren.length} Fuhren · ${(hofFuhren.reduce((s,f)=>s+(netto(f)||0),0)/1000).toFixed(1)} t</div>
+        <div style="font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:12px">🏗 Hofplatz · Zwischenlager · ${hofFuhren.length} Fuhren · ${(hofFuhren.reduce((s,f)=>s+(netto(f)||0),0)/1000).toFixed(1)} t</div>
         ${hofFuhren.length ? hofFuhren.map(f=>{
           const n=netto(f); const fr=getFruchtFarbe(f.fruchtart);
           return `<div style="display:flex;border-radius:8px;overflow:hidden;margin-bottom:8px;background:#ffffff;border:1px solid #d8dcd8">
             <div style="width:5px;flex-shrink:0;background:${fr.dot}"></div>
             <div style="padding:10px 12px;flex:1;display:flex;align-items:center;gap:10px">
               <div style="flex:1">
-                <div style="font-size:14px;font-weight:700;color:#2c2c2c">${f.fruchtart}</div>
-                <div style="font-size:13px;color:#5a7a3a;font-weight:600">${n?(n/1000).toFixed(2)+' t':'–'}</div>
-                <div style="font-size:12px;color:#5a7a5a">${getFeld(f.feldId).name||'–'} · ${f.feuchte??'–'}%F</div>
+                <div style="font-size:14px;font-weight:700;color:var(--text)">${f.fruchtart}</div>
+                <div style="font-size:13px;color:var(--text);font-weight:600">${n?(n/1000).toFixed(2)+' t':'–'}</div>
+                <div style="font-size:12px;color:var(--text2)">${getFeld(f.feldId).name||'–'} · ${f.feuchte??'–'}%F</div>
               </div>
               <button onclick="removeFuhreFromSilo(${f.id})" title="Vom Hof entfernen"
                 style="background:none;border:1px solid #4a6a4a;color:#5a8a5a;cursor:pointer;font-size:14px;width:30px;height:30px;border-radius:6px;flex-shrink:0">✕</button>
             </div>
           </div>`;
-        }).join('') : '<div style="text-align:center;padding:32px;color:#3d5a28;font-size:14px">Fuhren aus der Warteschlange hierher ziehen</div>'}
+        }).join('') : '<div style="text-align:center;padding:32px;color:var(--text);font-size:14px">Fuhren aus der Warteschlange hierher ziehen</div>'}
       </div>
     </div>
   </div>`;
@@ -3920,17 +3929,17 @@ function renderSiloManagement() {
     return `<div draggable="true"
       ondragstart="_dragFuhreId=${f.id};this.style.opacity='0.5'"
       ondragend="this.style.opacity='1'"
-      style="display:flex;border-radius:10px;overflow:hidden;margin-bottom:10px;cursor:grab;background:${feuchteW?'rgba(239,68,68,0.06)':'#ffffff'};border:1px solid ${feuchteW?'#ef4444':'#2a3a2a'}">
+      style="display:flex;border-radius:10px;overflow:hidden;margin-bottom:10px;cursor:grab;background:${feuchteW?'rgba(239,68,68,0.06)':'var(--card)'};border:1px solid ${feuchteW?'#ef4444':'var(--border)'}">
       <div style="width:6px;flex-shrink:0;background:${feuchteW?'#ef4444':farbe.dot}"></div>
       <div style="padding:11px 13px;flex:1;min-width:0">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-          <span style="font-size:16px;font-weight:700;color:#2c2c2c">${f.fruchtart}</span>
+          <span style="font-size:16px;font-weight:700;color:var(--text)">${f.fruchtart}</span>
           <span style="font-size:15px;color:${verColor}">${verIcon}</span>
         </div>
-        <div style="font-size:17px;font-weight:800;color:#5a7a3a;margin-bottom:4px">${nettoStr}</div>
+        <div style="font-size:17px;font-weight:800;color:var(--gold);margin-bottom:4px">${nettoStr}</div>
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:13px;color:#7a9a7a">${f.feuchte!=null?f.feuchte+'%F':''}${f.feuchte!=null&&f.protein!=null?' · ':''}${f.protein!=null?f.protein+'%P':''}</span>
-          <span style="font-size:12px;color:#5a7a5a">${datum}</span>
+          <span style="font-size:13px;color:var(--text3)">${f.feuchte!=null?f.feuchte+'%F':''}${f.feuchte!=null&&f.protein!=null?' · ':''}${f.protein!=null?f.protein+'%P':''}</span>
+          <span style="font-size:12px;color:var(--text3)">${datum}</span>
         </div>
       </div>
     </div>`;
@@ -3941,13 +3950,13 @@ function renderSiloManagement() {
   const cl = (v) => view===v ? '#1a1400' : 'var(--text3)';
   const capLbl = view==='B' ? '5 × 1.000 t' : view==='A' ? '21 × 300 t' : 'Hofplatz';
   const emptyMsg = totalFertig ? '✓ Alle zugeordnet' : 'Keine fertigen Fuhren';
-  const queueHtml = unassigned.length ? unassigned.map(fi).join('') : `<div style="text-align:center;padding:20px 8px;color:#5a7a5a;font-size:11px">${emptyMsg}</div>`;
+  const queueHtml = unassigned.length ? unassigned.map(fi).join('') : `<div style="text-align:center;padding:20px 8px;color:var(--text2);font-size:11px">${emptyMsg}</div>`;
   el.innerHTML = `
     <div style="display:flex;flex-direction:column;height:calc(100vh - 49px);overflow:hidden">
       <div style="padding:10px 16px;border-bottom:1px solid #d8dcd8;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#ffffff">
         <div style="display:flex;align-items:center;gap:10px">
-          <button onclick="setAdminTab('schlaege')" style="background:none;border:1px solid #d8dcd8;color:#5a7a5a;padding:5px 10px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:12px">← Zurück</button>
-          <div style="font-family:var(--serif);font-size:16px;color:#2c2c2c">🏭 Silomanagement</div>
+          <button onclick="setAdminTab('schlaege')" style="background:none;border:1px solid #d8dcd8;color:var(--text2);padding:5px 10px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:12px">← Zurück</button>
+          <div style="font-family:var(--serif);font-size:16px;color:var(--text)">🏭 Silomanagement</div>
         </div>
         <div style="display:flex;align-items:center;gap:12px">
           <div style="display:flex;background:#e8ece8;border:1px solid #d8dcd8;border-radius:20px;padding:3px;gap:2px">
@@ -3955,15 +3964,15 @@ function renderSiloManagement() {
             <button onclick="_siloView=&quot;A&quot;;renderSiloManagement()" style="padding:8px 20px;border-radius:16px;border:none;cursor:pointer;font-family:var(--mono);font-size:15px;font-weight:700;background:${bg('A')};color:${cl('A')}">A</button>
             <button onclick="_siloView=&quot;HOF&quot;;renderSiloManagement()" style="padding:8px 20px;border-radius:16px;border:none;cursor:pointer;font-family:var(--mono);font-size:15px;font-weight:700;background:${bg('HOF')};color:${cl('HOF')}">Hof</button>
           </div>
-          <div style="font-size:14px;color:#5a7a5a">${capLbl}</div>
+          <div style="font-size:14px;color:var(--text2)">${capLbl}</div>
           <button class="btn btn-sm btn-outline" onclick="exportSiloCSV()">⬇ CSV</button>
         </div>
       </div>
       <div style="display:flex;flex:1;overflow:hidden">
         <div style="width:320px;flex-shrink:0;border-right:1px solid #d8dcd8;display:flex;flex-direction:column">
           <div style="padding:8px 12px;border-bottom:1px solid #d8dcd8">
-            <div style="font-size:17px;font-weight:800;color:#2c2c2c">Warteschlange</div>
-            <div style="font-size:14px;color:#7a9a7a">${unassigned.length} offen · ${totalAssigned}/${totalFertig} zugeordnet</div>
+            <div style="font-size:17px;font-weight:800;color:var(--text)">Warteschlange</div>
+            <div style="font-size:14px;color:var(--text3)">${unassigned.length} offen · ${totalAssigned}/${totalFertig} zugeordnet</div>
           </div>
           <div style="flex:1;overflow-y:auto;padding:8px">${queueHtml}</div>
         </div>
@@ -3971,7 +3980,7 @@ function renderSiloManagement() {
           ${view==='B' ? bList : view==='A' ? aGrid : hofView}
         </div>
         <div id="silo-detail-panel" style="width:360px;flex-shrink:0;border-left:1px solid #d8dcd8;display:flex;flex-direction:column;background:#ffffff">
-          <div style="padding:14px 16px;border-bottom:1px solid #d8dcd8;font-size:16px;color:#7a9a7a;font-weight:600">← Silo anklicken</div>
+          <div style="padding:14px 16px;border-bottom:1px solid #d8dcd8;font-size:16px;color:var(--text3);font-weight:600">← Silo anklicken</div>
           <div id="silo-detail-content" style="flex:1;overflow-y:auto;padding:12px"></div>
         </div>
       </div>
@@ -3990,9 +3999,9 @@ function openSiloDetail(siloId) {
     const id = svg.id.replace('ssvg-','');
     const circles = svg.querySelectorAll('circle');
     if(circles.length > 0) {
-      circles[0].style.stroke = id===siloId ? 'var(--gold)' : '#2a422a';
+      circles[0].style.stroke = id===siloId ? 'var(--gold)' : '#c2c9b9';
       circles[0].style.strokeWidth = id===siloId ? '4' : '2';
-      circles[0].style.fill = id===siloId ? '#1e321e' : '#161e16';
+      circles[0].style.fill = id===siloId ? '#edf5e8' : '#ffffff';
     }
   });
 }
@@ -4023,39 +4032,39 @@ function renderSiloDetail(siloId) {
     const fr = getFruchtFarbe(f.fruchtart);
     const datum = new Date(f.zeit).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
     const feuchteWarn = feuchteZuHoch(f);
-    const borderColor = feuchteWarn ? '#ef4444' : '#2a3a2a';
-    const bgColor = feuchteWarn ? 'rgba(239,68,68,0.08)' : '#1a2a1a';
+    const borderColor = feuchteWarn ? '#ef4444' : 'var(--border)';
+    const bgColor = feuchteWarn ? 'rgba(239,68,68,0.08)' : 'var(--card)';
     const stripColor = feuchteWarn ? '#ef4444' : fr.dot;
     const warnBadge = feuchteWarn ? '<span style="font-size:11px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.1);padding:2px 8px;border-radius:10px">&#9888; Feuchte zu hoch</span>' : '';
-    const feuchteColor = feuchteWarn ? '#ef4444' : '#6a8a6a';
+    const feuchteColor = feuchteWarn ? '#ef4444' : 'var(--text3)';
     const feuchteWeight = feuchteWarn ? '700' : '400';
     const feuchteStr = f.feuchte!=null ? '<span style="color:'+feuchteColor+';font-weight:'+feuchteWeight+'">'+f.feuchte+'%F'+(feuchteWarn?' &#9888;':'')+'</span>' : '';
-    const proteinStr = f.protein!=null ? ' <span style="color:#5a7a5a">· '+f.protein+'%P</span>' : '';
-    const hlStr = f.hlGewicht!=null ? ' <span style="color:#5a7a5a">· HL '+f.hlGewicht+'</span>' : '';
+    const proteinStr = f.protein!=null ? ' <span style="color:var(--text3)">· '+f.protein+'%P</span>' : '';
+    const hlStr = f.hlGewicht!=null ? ' <span style="color:var(--text3)">· HL '+f.hlGewicht+'</span>' : '';
     return '<div style="display:flex;border-radius:8px;overflow:hidden;margin-bottom:8px;background:'+bgColor+';border:1px solid '+borderColor+'">'
       +'<div style="width:5px;flex-shrink:0;background:'+stripColor+'"></div>'
       +'<div style="padding:10px 12px;flex:1;min-width:0">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'
-      +'<span style="font-size:15px;font-weight:700;color:#5a7a3a">'+(n?(n/1000).toFixed(2)+' t':'–')+'</span>'
+      +'<span style="font-size:15px;font-weight:700;color:var(--gold)">'+(n?(n/1000).toFixed(2)+' t':'–')+'</span>'
       +warnBadge
-      +'<button onclick="removeFuhreFromSilo('+f.id+')" title="Aus Silo entfernen" style="background:none;border:1px solid #4a6a4a;color:#5a8a5a;cursor:pointer;font-size:14px;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">&#x2715;</button>'
+      +'<button onclick="removeFuhreFromSilo('+f.id+')" title="Aus Silo entfernen" style="background:none;border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:14px;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">&#x2715;</button>'
       +'</div>'
-      +'<div style="font-size:13px;color:#3d5a28">'+f.fruchtart+'</div>'
-      +'<div style="font-size:12px;color:#5a7a5a;margin-top:2px">'+(getFeld(f.feldId).name||'–')+' · '+datum+'</div>'
+      +'<div style="font-size:13px;color:var(--text2)">'+f.fruchtart+'</div>'
+      +'<div style="font-size:12px;color:var(--text3);margin-top:2px">'+(getFeld(f.feldId).name||'–')+' · '+datum+'</div>'
       +'<div style="font-size:12px;margin-top:1px">'+feuchteStr+proteinStr+hlStr+'</div>'
       +'</div></div>';
   };
 
   panel.innerHTML = `
-    <div style="font-family:var(--serif);font-size:28px;font-weight:700;color:#3a3a3a;margin-bottom:2px">Silo ${siloId}</div>
-    <div style="font-size:14px;margin-bottom:14px">${silo.kapazitaet_t} t${kultur?` · <span style="color:${farbe.dot};font-weight:600">${kultur}</span>`:' · <span style="color:#5a7a5a">leer</span>'}</div>
+    <div style="font-family:var(--serif);font-size:28px;font-weight:700;color:var(--text);margin-bottom:2px">Silo ${siloId}</div>
+    <div style="font-size:14px;margin-bottom:14px">${silo.kapazitaet_t} t${kultur?` · <span style="color:${farbe.dot};font-weight:600">${kultur}</span>`:' · <span style="color:var(--text2)">leer</span>'}</div>
     <div style="background:#d8e8d0;border-radius:6px;height:10px;overflow:hidden;margin-bottom:6px">
       <div style="width:${Math.min(pct,100).toFixed(1)}%;height:100%;background:${barColor};border-radius:6px;transition:width .3s"></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:16px">
       <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 10px;text-align:center">
         <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:3px">Eingang</div>
-        <div style="font-size:16px;font-weight:700;color:var(--green2)">${(eingangKg/1000).toFixed(1)} t</div>
+        <div style="font-size:16px;font-weight:700;color:var(--gold)">${(eingangKg/1000).toFixed(1)} t</div>
       </div>
       <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 10px;text-align:center">
         <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:3px">Ausgang</div>
@@ -4070,19 +4079,19 @@ function renderSiloDetail(siloId) {
     <div style="font-size:12px;color:var(--text3);margin-bottom:4px;text-align:right">${pct.toFixed(0)}% belegt</div>
     ${avgFeuchte ? `
     <div style="background:#f4f8f4;border-radius:8px;padding:12px 14px;margin-bottom:16px;border:1px solid #d0dcd0">
-      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#5a7a5a;margin-bottom:10px">Ø Qualität</div>
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin-bottom:10px">Ø Qualität</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><div style="font-size:11px;color:#5a7a5a;margin-bottom:2px">Feuchte</div><div style="font-size:22px;font-weight:700;color:#2c2c2c">${avgFeuchte}<span style="font-size:13px;color:#5a7a5a">%</span></div></div>
-        <div><div style="font-size:11px;color:#5a7a5a;margin-bottom:2px">Protein</div><div style="font-size:22px;font-weight:700;color:#2c2c2c">${avgProtein}<span style="font-size:13px;color:#5a7a5a">%</span></div></div>
-        <div><div style="font-size:11px;color:#5a7a5a;margin-bottom:2px">HL-Gewicht</div><div style="font-size:22px;font-weight:700;color:#2c2c2c">${avgHL}</div></div>
-        ${avgFallzahl?`<div><div style="font-size:11px;color:#5a7a5a;margin-bottom:2px">Fallzahl</div><div style="font-size:22px;font-weight:700;color:#2c2c2c">${avgFallzahl}</div></div>`:''}
+        <div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">Feuchte</div><div style="font-size:22px;font-weight:700;color:var(--text)">${avgFeuchte}<span style="font-size:13px;color:var(--text2)">%</span></div></div>
+        <div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">Protein</div><div style="font-size:22px;font-weight:700;color:var(--text)">${avgProtein}<span style="font-size:13px;color:var(--text2)">%</span></div></div>
+        <div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">HL-Gewicht</div><div style="font-size:22px;font-weight:700;color:var(--text)">${avgHL}</div></div>
+        ${avgFallzahl?`<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">Fallzahl</div><div style="font-size:22px;font-weight:700;color:var(--text)">${avgFallzahl}</div></div>`:''}
       </div>
     </div>` : ''}
-    <div style="font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#5a7a5a;margin-bottom:10px">
+    <div style="font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin-bottom:10px">
       ${assignedFuhren.length} Fuhren · ✕ zum Entfernen
     </div>
     ${assignedFuhren.map(fuhreRow).join('')}
-    ${!assignedFuhren.length?`<div style="text-align:center;padding:32px 0;color:#3d5a28;font-size:14px">Leer<br><span style="font-size:12px">Fuhre aus der Warteschlange hierher ziehen</span></div>`:''}`;
+    ${!assignedFuhren.length?`<div style="text-align:center;padding:32px 0;color:var(--text);font-size:14px">Leer<br><span style="font-size:12px">Fuhre aus der Warteschlange hierher ziehen</span></div>`:''}`;
 }
 
 // ─── AUSLAGERN ───
@@ -4139,8 +4148,8 @@ function warenausgangsDialog(preGewichtKg) {
         <input type="text" id="wb-beleg" placeholder="z.B. LS-2026-001">
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:10px">
-        <input type="checkbox" id="wb-bio" style="width:18px;height:18px;accent-color:var(--green2)">
-        <label style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--green2);margin:0">Bio-Ware</label>
+        <input type="checkbox" id="wb-bio" style="width:18px;height:18px;accent-color:var(--gold)">
+        <label style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin:0">Bio-Ware</label>
       </div>
       <div class="form-group">
         <label>Notiz</label>
@@ -4165,7 +4174,7 @@ function wareneingangsDialog() {
   m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto';
   m.innerHTML = `
     <div style="background:var(--card);border:1px solid var(--border2);border-radius:var(--radius);padding:24px;width:100%;max-width:460px;box-shadow:var(--shadow)">
-      <div style="font-family:var(--serif);font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green2);margin-bottom:20px">↓ Wareneingang</div>
+      <div style="font-family:var(--serif);font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:20px">↓ Wareneingang</div>
       <div class="form-group">
         <label>Artikel *</label>
         <select id="wb-artikel"><option value="">– wählen –</option>${artOpts}</select>
@@ -4185,8 +4194,8 @@ function wareneingangsDialog() {
         <input type="text" id="wb-beleg" placeholder="z.B. RE-2026-001">
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:10px">
-        <input type="checkbox" id="wb-bio" style="width:18px;height:18px;accent-color:var(--green2)">
-        <label style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--green2);margin:0">Bio-Ware</label>
+        <input type="checkbox" id="wb-bio" style="width:18px;height:18px;accent-color:var(--gold)">
+        <label style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin:0">Bio-Ware</label>
       </div>
       <div class="form-group">
         <label>Notiz</label>
@@ -4507,7 +4516,7 @@ function renderWarenausgang() {
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
       +'<div style="flex:1;min-width:0">'
       +'<div style="font-size:12px;font-weight:700;letter-spacing:1px;color:'+farbe+';text-transform:uppercase">'
-      +pfeil+' '+(isAus?'Ausgang':'Eingang')+(w.silo_von_id?' · Silo '+w.silo_von_id:'')+(w.bio?' · <span style="color:var(--green2)">BIO</span>':'')+'</div>'
+      +pfeil+' '+(isAus?'Ausgang':'Eingang')+(w.silo_von_id?' · Silo '+w.silo_von_id:'')+(w.bio?' · <span style="color:var(--gold)">BIO</span>':'')+'</div>'
       +'<div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+(art?escapeHtml(art.name):'–')+'</div>'
       +(kontr?'<div style="font-size:11px;color:var(--gold);margin-top:1px">Kontrakt '+escapeHtml(kontr.nummer)+'</div>':'')
       +'<div style="font-size:11px;color:var(--text3);margin-top:1px">'
@@ -4523,7 +4532,7 @@ function renderWarenausgang() {
 
   document.getElementById('admintab').innerHTML = ''
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">'
-    +'<div class="stat-box"><div class="stat-val" style="font-size:20px;color:var(--green2)">'+einT.toFixed(1)+'</div><div class="stat-label">t Eingang</div></div>'
+    +'<div class="stat-box"><div class="stat-val" style="font-size:20px;color:var(--gold)">'+einT.toFixed(1)+'</div><div class="stat-label">t Eingang</div></div>'
     +'<div class="stat-box"><div class="stat-val" style="font-size:20px;color:var(--amber)">'+ausT.toFixed(1)+'</div><div class="stat-label">t Ausgang</div></div>'
     +'<div class="stat-box"><div class="stat-val" style="font-size:20px;color:var(--text)">'+(einT-ausT).toFixed(1)+'</div><div class="stat-label">t Saldo</div></div>'
     +'</div>'
@@ -4780,7 +4789,7 @@ function renderKontrakte() {
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-sm btn-outline" onclick="kontraktBearbeiten(${k.id})">✏ Bearbeiten</button>
-        ${k.status==='aktiv'?`<button class="btn btn-sm" style="background:none;border:1px solid var(--border2);color:var(--green2)" onclick="kontraktStatus(${k.id},'erfuellt')">✓ Als erfüllt markieren</button>`:''}
+        ${k.status==='aktiv'?`<button class="btn btn-sm" style="background:none;border:1px solid var(--border2);color:var(--gold)" onclick="kontraktStatus(${k.id},'erfuellt')">✓ Als erfüllt markieren</button>`:''}
         ${k.status==='aktiv'?`<button class="btn btn-sm" style="background:none;border:1px solid var(--border2);color:var(--red)" onclick="kontraktStatus(${k.id},'storniert')">✕ Stornieren</button>`:''}
       </div>
     </div>`;
@@ -4968,8 +4977,8 @@ function kontraktNeuDialog(id, prefill={}, pdfName='', pdfText='') {
       </div>
       <div class="form-group"><label>Parität</label><input type="text" id="kk-paritaet" value="${escapeHtml(v.paritaet||k?.paritaet||'')}" placeholder="z.B. frei Werk"></div>
       <div class="form-group" style="display:flex;align-items:center;gap:10px">
-        <input type="checkbox" id="kk-bio" style="width:18px;height:18px;accent-color:var(--green2)" ${(v.bio||k?.bio)?'checked':''}>
-        <label style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--green2);margin:0">Bio-Kontrakt</label>
+        <input type="checkbox" id="kk-bio" style="width:18px;height:18px;accent-color:var(--gold)" ${(v.bio||k?.bio)?'checked':''}>
+        <label style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin:0">Bio-Kontrakt</label>
       </div>
       <div class="form-group"><label>Notiz</label><input type="text" id="kk-notiz" value="${escapeHtml(v.notiz||k?.notiz||'')}"></div>
       <div style="display:flex;gap:8px;margin-top:12px">
@@ -5051,8 +5060,8 @@ function neueLieferungDialog() {
     +'<div class="form-group"><label>Kennzeichen LKW</label><input type="text" id="l-kz" placeholder="z.B. HAL-XX 123"></div>'
     +'<div class="form-group"><label>Spedition</label><input type="text" id="l-spedition"></div>'
     +'<div class="form-group" style="display:flex;align-items:center;gap:10px">'
-    +'<input type="checkbox" id="l-bio" style="width:18px;height:18px;accent-color:var(--green2)">'
-    +'<label style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--green2);margin:0">Bio-Ware</label></div>'
+    +'<input type="checkbox" id="l-bio" style="width:18px;height:18px;accent-color:var(--gold)">'
+    +'<label style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin:0">Bio-Ware</label></div>'
     +'<div class="form-group"><label>Leergewicht (kg) *</label><input type="text" inputmode="numeric" id="l-leer" placeholder="14.500" oninput="fmtGewicht(this)"></div>'
     +waageWidgetHTML('leer')
     +'<div class="form-group"><label>Notiz</label><input type="text" id="l-notiz"></div>'
@@ -5116,18 +5125,18 @@ function lieferungAbschliessen(id) {
   m.id = 'voll-modal';
   m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
   m.innerHTML = '<div style="background:#ffffff;border:1px solid #d8dcd8;border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:var(--shadow)">'
-    +'<div style="font-family:var(--serif);font-size:18px;color:#2c2c2c;margin-bottom:4px">⚖ Vollgewicht eingeben</div>'
-    +'<div style="font-size:12px;color:#5a7a5a;margin-bottom:16px">'+l.nr+' · '+l.kaeufer_name+' · '+l.fruchtart+'</div>'
+    +'<div style="font-family:var(--serif);font-size:18px;color:var(--text);margin-bottom:4px">⚖ Vollgewicht eingeben</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-bottom:16px">'+l.nr+' · '+l.kaeufer_name+' · '+l.fruchtart+'</div>'
     +'<div style="background:#ffffff;border-radius:8px;padding:12px;margin-bottom:16px;text-align:center">'
-    +'<div style="font-size:11px;color:#5a7a5a;margin-bottom:4px">Leergewicht</div>'
+    +'<div style="font-size:11px;color:var(--text2);margin-bottom:4px">Leergewicht</div>'
     +'<div style="font-size:22px;font-weight:700;color:var(--text)">'+leerStr+' kg</div></div>'
     +'<div class="form-group"><label>Vollgewicht (kg) *</label>'
     +'<input type="text" inputmode="numeric" id="l-voll" placeholder="38.500" style="font-size:20px;font-weight:700"'
     +' oninput="fmtGewicht(this);(()=>{const v=parseGewicht(this.value);const el=document.getElementById(\'liefer-netto-val\');if(!el)return;if(v&&'+l.leergewicht+'&&v>'+l.leergewicht+'){el.textContent=((v-'+l.leergewicht+')/1000).toFixed(2)+\' t\';el.style.color=\'var(--green2)\'}else{el.textContent=\'–\';el.style.color=\'var(--text3)\'}})()"></div>'
     +waageWidgetHTML('voll')
     +'<div style="background:#e8ece8;border-radius:8px;padding:12px;text-align:center;margin-bottom:16px">'
-    +'<div style="font-size:11px;color:#5a7a5a">Netto</div>'
-    +'<div id="liefer-netto-val" style="font-size:26px;font-weight:700;color:#5a7a5a">–</div></div>'
+    +'<div style="font-size:11px;color:var(--text2)">Netto</div>'
+    +'<div id="liefer-netto-val" style="font-size:26px;font-weight:700;color:var(--text2)">–</div></div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn btn-primary" style="flex:1" onclick="lieferungAbschliessenSpeichern('+id+')">✓ Abschließen</button>'
     +'<button class="btn btn-outline" onclick="document.getElementById(\'voll-modal\').remove()">Abbrechen</button>'
@@ -5161,10 +5170,10 @@ function lieferungPDF(id) {
   win.document.write('<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">'
     +'<title>Lieferschein '+l.nr+'</title><style>'
     +'*{box-sizing:border-box;margin:0;padding:0}'
-    +'body{font-family:"Segoe UI",Arial,sans-serif;font-size:11px;color:#2c2c2c;padding:24px 32px}'
+    +'body{font-family:"Segoe UI",Arial,sans-serif;font-size:11px;color:var(--text);padding:24px 32px}'
     +'.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:2px solid #3a7d2c;padding-bottom:14px}'
     +'.firma{font-size:10px;color:#444;margin-top:6px;line-height:1.6}'
-    +'.title{font-size:36px;font-weight:900;color:#2c2c2c}'
+    +'.title{font-size:36px;font-weight:900;color:var(--text)}'
     +'.meta{border-collapse:collapse;min-width:200px;margin-top:8px;margin-left:auto}'
     +'.meta td{padding:4px 10px;border:1px solid #ccc;font-size:11px}'
     +'.meta td:first-child{color:#555;background:#f8f8f8;width:130px}'
@@ -5182,7 +5191,7 @@ function lieferungPDF(id) {
     +'.sign .line{border-bottom:1px solid #333;height:36px;margin-bottom:4px;}'
     +'.sign .sub{font-size:9px;color:#777}'
     +'.bank{font-size:9px;color:#555;line-height:1.7}'
-    +'.bank h4{font-size:10px;font-weight:700;color:#2c2c2c;margin-bottom:3px}'
+    +'.bank h4{font-size:10px;font-weight:700;color:var(--text);margin-bottom:3px}'
     +'@media print{body{padding:12px 20px} @page{margin:1.2cm;size:A4 portrait}}'
     +'</style></head><body>'
     +'<div class="hdr"><div>'
@@ -5421,21 +5430,21 @@ function renderJDMachineList() {
   const el = document.getElementById('jd-machine-list');
   if(!el) return;
   if(!_jdMachines.length) {
-    el.innerHTML = '<div style="color:#5a7a5a;font-size:12px;padding:12px">Keine Schlepper/Drescher gefunden</div>';
+    el.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:12px">Keine Schlepper/Drescher gefunden</div>';
     return;
   }
   el.innerHTML = _jdMachines.map(m => {
     return '<div style="padding:10px 14px;border-bottom:1px solid #d8dcd8;display:flex;align-items:center;gap:10px">'
       +'<span style="font-size:22px">'+(m.type==='combine'?'🌾':'🚜')+'</span>'
       +'<div><div style="font-size:13px;font-weight:600;color:var(--text)">'+m.name+'</div>'
-      +'<div style="font-size:11px;color:#5a7a5a">'+m.model+'</div></div>'
+      +'<div style="font-size:11px;color:var(--text2)">'+m.model+'</div></div>'
       +'</div>';
   }).join('');
 }
 
 async function renderJDLink() {
   const admintab = document.getElementById('admintab');
-  admintab.innerHTML = '<div style="padding:24px;text-align:center;color:#5a7a5a">Lade JD Telemetrie…</div>';
+  admintab.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text2)">Lade JD Telemetrie…</div>';
 
   // Callback-Code verarbeiten (aus sessionStorage nach Redirect)
   const pendingCode = sessionStorage.getItem('jd_pending_code');
@@ -5462,15 +5471,15 @@ async function renderJDLink() {
       <div style="max-width:480px;margin:0 auto;padding:32px 0">
         <div class="card" style="text-align:center;padding:32px">
           <div style="font-size:48px;margin-bottom:16px">🚜</div>
-          <div style="font-family:var(--serif);font-size:22px;color:#2c2c2c;margin-bottom:8px">John Deere Telemetrie</div>
-          <div style="font-size:13px;color:#5a7a5a;margin-bottom:24px;line-height:1.6">
+          <div style="font-family:var(--serif);font-size:22px;color:var(--text);margin-bottom:8px">John Deere Telemetrie</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.6">
             Verbinde deinen John Deere Operations Center Account um<br>
             Schlepper und Mähdrescher live auf der Karte zu sehen.
           </div>
           <button class="btn btn-primary" style="font-size:15px;padding:12px 28px" onclick="jdLogin()">
             Mit John Deere verbinden
           </button>
-          <div style="font-size:11px;color:#5a7a5a;margin-top:16px">
+          <div style="font-size:11px;color:var(--text2);margin-top:16px">
             Du wirst zu John Deere weitergeleitet und kehrst danach automatisch zurück.
           </div>
         </div>
@@ -5487,12 +5496,12 @@ async function renderJDLink() {
         <div style="padding:12px 14px;border-bottom:1px solid #d8dcd8;display:flex;align-items:center;justify-content:space-between">
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--text)">🚜 Maschinenpark</div>
-            <div style="font-size:11px;color:#5a7a5a">${_jdMachines.length} Fahrzeuge · live</div>
+            <div style="font-size:11px;color:var(--text2)">${_jdMachines.length} Fahrzeuge · live</div>
           </div>
           <button class="btn btn-sm btn-outline" onclick="_jdTokens=null;sb.from('jd_tokens').delete().eq('user_id',state.currentUser.id);renderJDLink()" style="font-size:11px">Abmelden</button>
         </div>
         <div id="jd-machine-list" style="flex:1;overflow-y:auto"></div>
-        <div style="padding:10px 14px;border-top:1px solid #d8dcd8;font-size:11px;color:#5a7a5a">
+        <div style="padding:10px 14px;border-top:1px solid #d8dcd8;font-size:11px;color:var(--text2)">
           <span class="live-dot"></span> Aktualisiert alle 30s
         </div>
       </div>
@@ -5667,12 +5676,12 @@ function renderOnboardingStep() {
           ${!isFirst ? `<button class="btn btn-outline btn-sm" onclick="obPrev()">← Zurück</button>` : ''}
           ${!isLast
             ? `<button class="btn btn-primary btn-sm" onclick="obNext()">Weiter →</button>`
-            : `<button class="btn btn-sm" style="background:var(--green);color:#2c2c2c;border:none;font-weight:700" onclick="closeOnboarding()">Los geht's! 🌾</button>`
+            : `<button class="btn btn-sm" style="background:var(--green);color:var(--text);border:none;font-weight:700" onclick="closeOnboarding()">Los geht's! 🌾</button>`
           }
         </div>
       </div>
       <div style="text-align:center;padding-bottom:14px">
-        <button onclick="closeOnboarding()" style="background:none;border:none;color:#5a7a5a;cursor:pointer;font-size:11px">Überspringen</button>
+        <button onclick="closeOnboarding()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:11px">Überspringen</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -5739,8 +5748,8 @@ function showNachrichtenDialog() {
   m.innerHTML = `
     <div style="background:#ffffff;border:1px solid #d8dcd8;border-radius:14px;padding:24px;width:100%;max-width:480px;box-shadow:var(--shadow);max-height:90vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <div style="font-family:var(--serif);font-size:20px;color:#2c2c2c">📢 Nachricht senden</div>
-        <button onclick="document.getElementById('nachricht-modal').remove()" style="background:none;border:none;color:#5a7a5a;cursor:pointer;font-size:18px">✕</button>
+        <div style="font-family:var(--serif);font-size:20px;color:var(--text)">📢 Nachricht senden</div>
+        <button onclick="document.getElementById('nachricht-modal').remove()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px">✕</button>
       </div>
       <div class="form-group" style="margin-bottom:12px">
         <label>Empfänger</label>
@@ -5758,7 +5767,7 @@ function showNachrichtenDialog() {
         <textarea id="nachricht-input" style="width:100%;background:#ffffff;border:1px solid #d8dcd8;border-radius:8px;color:var(--text);padding:10px 12px;font-family:var(--mono);font-size:13px;resize:vertical;min-height:80px" placeholder="z.B. Kurze Pause – Schlag Pfingstwiese 1 ist fertig. Bitte weiterfahren zu..."></textarea>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
-        <div style="font-size:11px;color:#5a7a5a;width:100%;margin-bottom:4px">Schnellnachrichten:</div>
+        <div style="font-size:11px;color:var(--text2);width:100%;margin-bottom:4px">Schnellnachrichten:</div>
         ${[
           '🛑 Kurze Pause – bitte warten',
           '✅ Schlag fertig – weiterfahren',
@@ -5767,7 +5776,7 @@ function showNachrichtenDialog() {
           '🔧 Maschinenausfall – bitte Bescheid geben',
           '📍 Treffpunkt Hofeinfahrt'
         ].map(t=>`<button onclick="document.getElementById('nachricht-input').value='${t}'" 
-          style="background:#e8ece8;border:1px solid #d8dcd8;color:#3a3a3a;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px">${t}</button>`).join('')}
+          style="background:#e8ece8;border:1px solid #d8dcd8;color:var(--text);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px">${t}</button>`).join('')}
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-primary" style="flex:1" onclick="adminSendNachricht(document.getElementById('nachricht-input').value, document.getElementById('nachricht-empfaenger').value)">
@@ -5776,8 +5785,8 @@ function showNachrichtenDialog() {
         <button class="btn btn-outline" onclick="document.getElementById('nachricht-modal').remove()">Abbrechen</button>
       </div>
       <div id="nachricht-verlauf" style="margin-top:16px;border-top:1px solid #d8dcd8;padding-top:12px">
-        <div style="font-size:12px;color:#5a7a5a;margin-bottom:8px">Letzte Nachrichten</div>
-        <div id="nachricht-liste" style="font-size:12px;color:#5a7a5a">Lädt…</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Letzte Nachrichten</div>
+        <div id="nachricht-liste" style="font-size:12px;color:var(--text2)">Lädt…</div>
       </div>
     </div>`;
   document.body.appendChild(m);
@@ -5793,10 +5802,10 @@ async function loadNachrichtenVerlauf() {
     el.innerHTML = data.map(n => `
       <div style="padding:8px 0;border-bottom:1px solid #d8dcd8">
         <div style="display:flex;justify-content:space-between;margin-bottom:2px">
-          <span style="color:#3a3a3a;font-weight:600">${n.text}</span>
-          <span style="color:#5a7a5a;font-size:10px">${new Date(n.zeit).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</span>
+          <span style="color:var(--text);font-weight:600">${n.text}</span>
+          <span style="color:var(--text2);font-size:10px">${new Date(n.zeit).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</span>
         </div>
-        <div style="color:#5a7a5a;font-size:10px">→ ${n.empfaenger==='alle'?'Alle':n.empfaenger==='drescher'?'Drescher':n.empfaenger==='abfahrer'?'Abfahrer':'Einzeln'}</div>
+        <div style="color:var(--text2);font-size:10px">→ ${n.empfaenger==='alle'?'Alle':n.empfaenger==='drescher'?'Drescher':n.empfaenger==='abfahrer'?'Abfahrer':'Einzeln'}</div>
       </div>`).join('');
   } catch(e) {}
 }
@@ -5840,10 +5849,10 @@ function showNachrichtBanner(text, vonName) {
   b.innerHTML = `
     <span style="font-size:24px;flex-shrink:0">📢</span>
     <div style="flex:1">
-      <div style="font-size:11px;color:#5a7a5a;margin-bottom:3px">Nachricht von ${vonName}</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:3px">Nachricht von ${vonName}</div>
       <div style="font-size:14px;font-weight:600;color:var(--text)">${text}</div>
     </div>
-    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#5a7a5a;cursor:pointer;font-size:16px;flex-shrink:0">✕</button>`;
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px;flex-shrink:0">✕</button>`;
   document.body.appendChild(b);
   // Nur manuell schließbar – kein Auto-Dismiss
 }
@@ -5863,14 +5872,14 @@ function renderNeuesErntejahr() {
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
         <span style="font-size:32px">🌱</span>
         <div>
-          <div style="font-family:var(--serif);font-size:20px;color:#2c2c2c">Neues Erntejahr anlegen</div>
-          <div style="font-size:12px;color:#5a7a5a;margin-top:2px">Stammdaten aktualisieren für die neue Saison</div>
+          <div style="font-family:var(--serif);font-size:20px;color:var(--text)">Neues Erntejahr anlegen</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Stammdaten aktualisieren für die neue Saison</div>
         </div>
       </div>
 
       <div style="background:#fff8e1;border:1px solid #f59e0b;border-radius:10px;padding:16px;margin-bottom:20px">
         <div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:8px">⚠ Wichtiger Hinweis</div>
-        <div style="font-size:12px;color:#3a3a3a;line-height:1.7">
+        <div style="font-size:12px;color:var(--text);line-height:1.7">
           Dieser Vorgang setzt <strong style="color:#fff">alle 156 Schläge</strong> auf "inaktiv" zurück
           und aktualisiert Flächen und Fruchtarten aus der neuen Excel-Datei.<br>
           <strong style="color:#fff">Alle Fuhren und Silo-Zuordnungen bleiben erhalten</strong> – sie werden nicht gelöscht.<br>
@@ -5884,7 +5893,7 @@ function renderNeuesErntejahr() {
           <div style="width:28px;height:28px;border-radius:50%;background:${_erntejahrStep>=1?'var(--green)':'var(--amber)'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0">${_erntejahrStep>=1?'✓':'1'}</div>
           <div style="font-size:13px;font-weight:600;color:var(--text)">Aktuellen Fuhren-Export herunterladen</div>
         </div>
-        <div style="font-size:12px;color:#5a7a5a;margin-bottom:12px;padding-left:38px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px;padding-left:38px">
           Lade zuerst die vollständige Liste aller bisherigen Fuhren herunter und speichere sie sicher ab. Das ist deine Datensicherung.
         </div>
         <div style="padding-left:38px">
@@ -5901,15 +5910,15 @@ function renderNeuesErntejahr() {
           <div style="width:28px;height:28px;border-radius:50%;background:${_erntejahrStep>=2?'var(--green)':_erntejahrStep>=1?'var(--blue)':'var(--bg3)'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0">${_erntejahrStep>=2?'✓':'2'}</div>
           <div style="font-size:13px;font-weight:600;color:var(--text)">Neue Flächenübersicht importieren (Excel)</div>
         </div>
-        <div style="font-size:12px;color:#5a7a5a;margin-bottom:12px;padding-left:38px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px;padding-left:38px">
           Lade die Flächenübersicht der neuen Saison hoch. Die App liest Schlagname, Fläche und Fruchtart automatisch aus.
         </div>
         <div style="padding-left:38px">
-          <label style="display:inline-block;background:#e8ece8;border:1px solid #d8dcd8;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:12px;color:#3a3a3a">
+          <label style="display:inline-block;background:#e8ece8;border:1px solid #d8dcd8;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:12px;color:var(--text)">
             📊 Excel-Datei auswählen (.xlsx)
             <input type="file" id="import-excel" accept=".xlsx,.xls" style="display:none" onchange="erntejahrExcelImport(this)">
           </label>
-          <div id="excel-status" style="font-size:11px;margin-top:8px;color:#5a7a5a"></div>
+          <div id="excel-status" style="font-size:11px;margin-top:8px;color:var(--text2)"></div>
         </div>
       </div>
 
@@ -5917,25 +5926,25 @@ function renderNeuesErntejahr() {
       <div style="border:1px solid #d8dcd8;border-radius:10px;padding:16px;margin-bottom:20px;background:#ffffff;opacity:${_erntejahrStep>=2?1:0.4};pointer-events:${_erntejahrStep>=2?'auto':'none'}">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
           <div style="width:28px;height:28px;border-radius:50%;background:${_erntejahrStep>=3?'var(--green)':_erntejahrStep>=2?'var(--blue)':'var(--bg3)'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0">${_erntejahrStep>=3?'✓':'3'}</div>
-          <div style="font-size:13px;font-weight:600;color:var(--text)">Neue Schlaggrenzen importieren (KML) <span style="font-size:11px;color:#5a7a5a;font-weight:400">– optional</span></div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">Neue Schlaggrenzen importieren (KML) <span style="font-size:11px;color:var(--text2);font-weight:400">– optional</span></div>
         </div>
-        <div style="font-size:12px;color:#5a7a5a;margin-bottom:12px;padding-left:38px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px;padding-left:38px">
           Falls sich Schlaggrenzen geändert haben, lade die neuen KML-Dateien hoch. Mehrere Dateien gleichzeitig möglich.
         </div>
         <div style="padding-left:38px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <label style="display:inline-block;background:#e8ece8;border:1px solid #d8dcd8;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:12px;color:#3a3a3a">
+          <label style="display:inline-block;background:#e8ece8;border:1px solid #d8dcd8;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:12px;color:var(--text)">
             🗺 KML-Dateien auswählen
             <input type="file" id="import-kml" accept=".kml" multiple style="display:none" onchange="erntejahrKMLImport(this)">
           </label>
           <button class="btn btn-sm btn-outline" onclick="_erntejahrStep=3;renderNeuesErntejahr()">Überspringen →</button>
-          <div id="kml-status" style="font-size:11px;margin-top:8px;color:#5a7a5a;width:100%"></div>
+          <div id="kml-status" style="font-size:11px;margin-top:8px;color:var(--text2);width:100%"></div>
         </div>
       </div>
 
       ${_erntejahrStep>=3?`
       <div style="background:#e8f5e9;border:1px solid #5a8a3a;border-radius:10px;padding:16px;text-align:center">
         <div style="font-size:14px;color:var(--green);font-weight:600;margin-bottom:4px">✓ Neues Erntejahr ist bereit</div>
-        <div style="font-size:12px;color:#5a7a5a">Alle Schläge wurden aktualisiert und auf inaktiv gesetzt. Du kannst jetzt mit der Erntekampagne beginnen.</div>
+        <div style="font-size:12px;color:var(--text2)">Alle Schläge wurden aktualisiert und auf inaktiv gesetzt. Du kannst jetzt mit der Erntekampagne beginnen.</div>
       </div>`:''}
     </div>`;
 }
@@ -6206,7 +6215,7 @@ function exportTagesbericht() {
     <div class="bar-wrap">
       <span class="bar-abg" style="width:${(abgHa/gesamtHa*100).toFixed(1)}%"></span><span class="bar-akt" style="width:${(aktivHa/gesamtHa*100).toFixed(1)}%"></span>
     </div>
-    <span style="font-size:12px;font-weight:700;color:#2c2c2c;white-space:nowrap">${(abgHa/gesamtHa*100).toFixed(1)}%</span>
+    <span style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap">${(abgHa/gesamtHa*100).toFixed(1)}%</span>
     <span style="font-size:10px;color:#555;white-space:nowrap">${abgHa.toFixed(1)} / ${gesamtHa.toFixed(1)} ha</span>
   </div>
 
